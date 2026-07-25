@@ -20,4 +20,11 @@ def get_price_history(symbol: str, start_date: date, end_date: date) -> pd.DataF
         df.columns = df.columns.get_level_values(0)
     df = df.rename(columns=str.lower)
     df.index.name = "date"
+
+    # The most recent row can be an in-progress trading session with NaN
+    # OHLC values (real volume, no price yet) - unusable for backtesting.
+    df = df.dropna(subset=["close"])
+    if df.empty:
+        raise ValueError(f"No price data found for symbol '{symbol}'")
+
     return df

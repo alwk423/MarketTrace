@@ -1,6 +1,14 @@
+import { isAxiosError } from "axios";
 import { useState } from "react";
 import { runSimulation } from "../api/client";
 import type { SimulationRequest, SimulationResult } from "../types";
+
+function extractErrorMessage(err: unknown): string {
+  if (isAxiosError<{ detail?: string }>(err)) {
+    return err.response?.data?.detail ?? err.message;
+  }
+  return err instanceof Error ? err.message : "Simulation failed";
+}
 
 export function useSimulation() {
   const [result, setResult] = useState<SimulationResult | null>(null);
@@ -14,7 +22,7 @@ export function useSimulation() {
       const data = await runSimulation(payload);
       setResult(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Simulation failed");
+      setError(extractErrorMessage(err));
     } finally {
       setLoading(false);
     }

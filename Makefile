@@ -1,4 +1,6 @@
-.PHONY: help setup backend-setup frontend-setup db-up db-down migrate migration backend frontend up down test lint
+.PHONY: help setup backend-setup frontend-setup db-up db-down migrate migration backend frontend dev stop up down test lint
+
+PORTS := 8000 5173
 
 help:
 	@echo "make setup          Install backend + frontend dependencies"
@@ -8,6 +10,8 @@ help:
 	@echo "make migration msg=\"add trades table\"  Generate a new migration"
 	@echo "make backend        Run the FastAPI dev server (localhost:8000)"
 	@echo "make frontend       Run the React dev server (localhost:5173)"
+	@echo "make dev            Run backend + frontend together (kills stale processes first)"
+	@echo "make stop           Kill anything already bound to ports 8000/5173"
 	@echo "make up             Run the full stack in Docker Compose"
 	@echo "make down           Stop the Docker Compose stack"
 	@echo "make test           Run backend tests"
@@ -16,7 +20,7 @@ help:
 setup: backend-setup frontend-setup
 
 backend-setup:
-	cd backend && python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
+	cd backend && python3.11 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 
 frontend-setup:
 	cd frontend && npm install
@@ -38,6 +42,22 @@ backend:
 
 frontend:
 	cd frontend && npm run dev
+
+stop:
+	@for port in $(PORTS); do \
+		pid=$$(lsof -ti tcp:$$port | tr '\n' ' '); \
+		if [ -n "$$pid" ]; then \
+			echo "Killing process on port $$port (pid $$pid)"; \
+			kill -9 $$pid; \
+		fi; \
+	done
+
+dev: stop
+	@bash -c '\
+		trap "kill 0" EXIT INT TERM; \
+		(cd backend && .venv/bin/uvicorn app.main:app --reload --port 8000) & \
+		(cd frontend && npm run dev) & \
+		wait'
 
 up:
 	docker compose up --build
