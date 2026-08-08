@@ -1,5 +1,7 @@
 from datetime import date
 
+import pandas as pd
+
 from app.models.strategy import StrategyType
 from app.services.market_data import get_price_history
 from app.services.strategies.base import Strategy
