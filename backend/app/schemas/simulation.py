@@ -32,11 +32,6 @@ class EquityPoint(BaseModel):
     equity: float
 
 
-class IndicatorPoint(BaseModel):
-    date: datetime
-    value: float | None
-
-
 class SimulationResult(BaseModel):
     id: UUID
     stock_symbol: str
@@ -45,8 +40,5 @@ class SimulationResult(BaseModel):
     initial_capital: float
     final_capital: float
     total_return_pct: float
-    buy_and_hold_return_pct: float | None = None
     trades: list[TradeRead]
     equity_curve: list[EquityPoint]
-    buy_and_hold_equity_curve: list[EquityPoint] = []
-    indicators: dict[str, list[IndicatorPoint]] = {}

@@ -37,11 +37,6 @@ def run_backtest(
     prices = get_price_history(symbol, start_date, end_date)
     strategy = build_strategy(strategy_type, parameters)
     signals = strategy.generate_signals(prices)
-    # Allow strategies to expose their computed indicator series (optional).
-    indicators = {}
-    compute_indicators = getattr(strategy, "compute_indicators", None)
-    if callable(compute_indicators):
-        indicators = compute_indicators(prices)
 
     cash = initial_capital
     shares = 0.0
@@ -107,7 +102,4 @@ def run_backtest(
         "equity_curve": equity_curve,
         "final_capital": final_capital,
         "total_return_pct": total_return_pct,
-        "buy_and_hold_equity_curve": buy_and_hold_curve,
-        "buy_and_hold_return_pct": buy_and_hold_return_pct,
-        "indicators": serial_indicators,
     }
