@@ -35,11 +35,6 @@ def run_backtest(
     prices = get_price_history(symbol, start_date, end_date)
     strategy = build_strategy(strategy_type, parameters)
     signals = strategy.generate_signals(prices)
-    # Allow strategies to expose their computed indicator series (optional).
-    indicators = {}
-    compute_indicators = getattr(strategy, "compute_indicators", None)
-    if callable(compute_indicators):
-        indicators = compute_indicators(prices)
 
     cash = initial_capital
     shares = 0.0
@@ -81,31 +76,9 @@ def run_backtest(
     final_capital = cash + shares * final_price
     total_return_pct = (final_capital / initial_capital - 1) * 100
 
-    # Buy-and-hold benchmark: buy at first close, hold until each timestamp.
-    first_price = float(prices["close"].iloc[0])
-    buy_shares = initial_capital / first_price
-    buy_and_hold_curve = []
-    for timestamp in prices.index:
-        p = float(prices.loc[timestamp, "close"])
-        buy_and_hold_curve.append({"date": timestamp, "price": p, "equity": buy_shares * p})
-    final_bh = buy_shares * final_price
-    buy_and_hold_return_pct = (final_bh / initial_capital - 1) * 100
-
-    # Convert any indicator Series objects into serializable lists of (date, value)
-    serial_indicators: dict[str, list[dict]] = {}
-    for name, series in indicators.items():
-        # `series` is expected to be a pandas Series indexed by timestamps
-        serial_indicators[name] = [
-            {"date": ts, "value": (None if pd.isna(val) else float(val))}
-            for ts, val in series.items()
-        ]
-
     return {
         "trades": trades,
         "equity_curve": equity_curve,
         "final_capital": final_capital,
         "total_return_pct": total_return_pct,
-        "buy_and_hold_equity_curve": buy_and_hold_curve,
-        "buy_and_hold_return_pct": buy_and_hold_return_pct,
-        "indicators": serial_indicators,
     }
