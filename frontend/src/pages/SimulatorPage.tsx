@@ -114,7 +114,7 @@ export default function SimulatorPage() {
 
       {result && (
         <section className="results">
-          <TradeChart result={result} />
+          <TradeChart result={result} parameters={parameters} />
           <ResultsPanel result={result} />
         </section>
       )}

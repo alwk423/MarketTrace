@@ -74,6 +74,9 @@ def create_simulation(payload: SimulationRequest, db: Session = Depends(get_db))
         total_return_pct=simulation.total_return_pct,
         trades=result["trades"],
         equity_curve=result["equity_curve"],
+        buy_and_hold_equity_curve=result.get("buy_and_hold_equity_curve", []),
+        buy_and_hold_return_pct=result.get("buy_and_hold_return_pct"),
+        indicators=result.get("indicators", {}),
     )
 
 
@@ -107,4 +110,7 @@ def get_simulation(simulation_id: UUID, db: Session = Depends(get_db)):
         # The equity curve isn't persisted (it's derivable from price history +
         # trades), so re-fetching a saved simulation returns trades only.
         equity_curve=[],
+        buy_and_hold_equity_curve=[],
+        buy_and_hold_return_pct=None,
+        indicators={},
     )
