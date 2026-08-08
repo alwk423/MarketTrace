@@ -28,6 +28,9 @@ def create_simulation(payload: SimulationRequest, db: Session = Depends(get_db))
             start_date=payload.start_date,
             end_date=payload.end_date,
             initial_capital=payload.initial_capital,
+            fee_pct=payload.fee_pct,
+            slippage_pct=payload.slippage_pct,
+            position_size_pct=payload.position_size_pct,
         )
     except ValueError as exc:
         # e.g. unknown ticker symbol -> respond 404 instead of 500.
@@ -72,6 +75,7 @@ def create_simulation(payload: SimulationRequest, db: Session = Depends(get_db))
         initial_capital=simulation.initial_capital,
         final_capital=simulation.final_capital,
         total_return_pct=simulation.total_return_pct,
+        return_before_costs_pct=result["return_before_costs_pct"],
         trades=result["trades"],
         equity_curve=result["equity_curve"],
     )
@@ -94,6 +98,7 @@ def get_simulation(simulation_id: UUID, db: Session = Depends(get_db)):
         initial_capital=simulation.initial_capital,
         final_capital=simulation.final_capital,
         total_return_pct=simulation.total_return_pct,
+        return_before_costs_pct=0.0,
         trades=[
             {
                 "trade_type": t.trade_type,

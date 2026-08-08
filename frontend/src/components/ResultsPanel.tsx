@@ -9,7 +9,13 @@ export default function ResultsPanel({ result }: ResultsPanelProps) {
     <div className="results-panel">
       <div className="metrics">
         <div>
-          <span>Total return</span>
+          <span>Return before costs</span>
+          <strong className={result.return_before_costs_pct >= 0 ? "positive" : "negative"}>
+            {result.return_before_costs_pct.toFixed(2)}%
+          </strong>
+        </div>
+        <div>
+          <span>Return after costs</span>
           <strong className={result.total_return_pct >= 0 ? "positive" : "negative"}>
             {result.total_return_pct.toFixed(2)}%
           </strong>

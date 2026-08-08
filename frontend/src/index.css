@@ -51,13 +51,39 @@ button {
 
 .metrics {
   display: flex;
-  gap: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem 2rem;
   margin-bottom: 1.5rem;
 }
 
 .metrics > div {
   display: flex;
   flex-direction: column;
+  min-width: 10rem;
+}
+
+.advanced-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(128, 128, 128, 0.25);
+  border-radius: 0.5rem;
+}
+
+.advanced-settings summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.advanced-settings-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.advanced-settings-grid label {
+  min-width: 8rem;
 }
 
 .positive {
