@@ -13,6 +13,11 @@ export default function ResultsPanel({ result }: ResultsPanelProps) {
           <strong className={result.total_return_pct >= 0 ? "positive" : "negative"}>
             {result.total_return_pct.toFixed(2)}%
           </strong>
+          {typeof result.buy_and_hold_return_pct === "number" && (
+            <small className={result.total_return_pct - (result.buy_and_hold_return_pct ?? 0) >= 0 ? "positive" : "negative"} style={{ marginLeft: 8 }}>
+              vs Buy & Hold: {(result.buy_and_hold_return_pct ?? 0).toFixed(2)}% ({(result.total_return_pct - (result.buy_and_hold_return_pct ?? 0)).toFixed(2)}%)
+            </small>
+          )}
         </div>
         <div>
           <span>Final capital</span>

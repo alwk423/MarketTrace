@@ -31,3 +31,9 @@ class SmaCrossoverStrategy(Strategy):
         signals[crossed_up] = 1  # buy on cross-up days
         signals[crossed_down] = -1  # sell on cross-down days
         return signals
+
+    def compute_indicators(self, prices: pd.DataFrame) -> dict:
+        close = prices["close"]
+        short_sma = close.rolling(self.short_window).mean()
+        long_sma = close.rolling(self.long_window).mean()
+        return {"short_sma": short_sma, "long_sma": long_sma}

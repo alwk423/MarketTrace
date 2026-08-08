@@ -37,6 +37,9 @@ export interface SimulationResult {
   total_return_pct: number;
   trades: Trade[];
   equity_curve: EquityPoint[];
+  buy_and_hold_equity_curve?: EquityPoint[];
+  buy_and_hold_return_pct?: number | null;
+  indicators?: Record<string, { date: string; value: number | null }[]>;
 }
 
 export interface SimulationRequest {
