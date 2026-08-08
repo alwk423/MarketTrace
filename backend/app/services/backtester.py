@@ -1,6 +1,6 @@
 from datetime import date
 
-import pandas as pd
+from pandas import isna
 
 from app.models.strategy import StrategyType
 from app.services.market_data import get_price_history
@@ -98,7 +98,7 @@ def run_backtest(
     for name, series in indicators.items():
         # `series` is expected to be a pandas Series indexed by timestamps
         serial_indicators[name] = [
-            {"date": ts, "value": (None if pd.isna(val) else float(val))}
+            {"date": ts, "value": (None if isna(val) else float(val))}
             for ts, val in series.items()
         ]
 
