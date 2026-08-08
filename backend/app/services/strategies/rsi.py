@@ -37,7 +37,3 @@ class RsiStrategy(Strategy):
         # lot lately -> bet it cools off -> sell.
         signals[(rsi > self.overbought) & (rsi.shift(1) <= self.overbought)] = -1
         return signals
-
-    def compute_indicators(self, prices: pd.DataFrame) -> dict:
-        rsi = self._rsi(prices["close"])
-        return {"rsi": rsi}
