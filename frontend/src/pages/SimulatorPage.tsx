@@ -21,6 +21,9 @@ export default function SimulatorPage() {
   const [startDate, setStartDate] = useState(oneYearAgo);
   const [endDate, setEndDate] = useState(today);
   const [initialCapital, setInitialCapital] = useState(10_000);
+  const [feePct, setFeePct] = useState(0.1);
+  const [slippagePct, setSlippagePct] = useState(0.05);
+  const [positionSizePct, setPositionSizePct] = useState(100);
 
   // Backend-call state (the last result, whether a request is in flight, any
   // error, and the function to trigger a new call) lives in this hook instead
@@ -60,6 +63,9 @@ export default function SimulatorPage() {
       start_date: startDate,
       end_date: endDate,
       initial_capital: initialCapital,
+      fee_pct: feePct,
+      slippage_pct: slippagePct,
+      position_size_pct: positionSizePct,
     });
   }
 
@@ -100,6 +106,43 @@ export default function SimulatorPage() {
           onSelect={handleSelectStrategy}
           onParametersChange={setParameters}
         />
+
+        <details className="advanced-settings">
+          <summary>Advanced settings</summary>
+          <div className="advanced-settings-grid">
+            <label>
+              Fee (%)
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={feePct}
+                onChange={(e) => setFeePct(Number(e.target.value))}
+              />
+            </label>
+            <label>
+              Slippage (%)
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={slippagePct}
+                onChange={(e) => setSlippagePct(Number(e.target.value))}
+              />
+            </label>
+            <label>
+              Position size (%)
+              <input
+                type="number"
+                step="1"
+                min="0"
+                max="100"
+                value={positionSizePct}
+                onChange={(e) => setPositionSizePct(Number(e.target.value))}
+              />
+            </label>
+          </div>
+        </details>
 
         {/* Disabled while a request is in flight or before any strategy has
             loaded/been picked; label swaps to a loading state too. */}
