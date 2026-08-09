@@ -6,8 +6,14 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.simulation import Simulation, Trade
 from app.models.strategy import Strategy as StrategyModel
-from app.schemas.simulation import SimulationRequest, SimulationResult
-from app.services.backtester import run_backtest
+from app.schemas.simulation import (
+    OptimizationRequest,
+    OptimizationResult,
+    RegimeSplit,
+    SimulationRequest,
+    SimulationResult,
+)
+from app.services.backtester import optimize_parameter_grid, run_backtest
 
 router = APIRouter(prefix="/api/simulations", tags=["simulations"])
 
@@ -75,10 +81,41 @@ def create_simulation(payload: SimulationRequest, db: Session = Depends(get_db))
         initial_capital=simulation.initial_capital,
         final_capital=simulation.final_capital,
         total_return_pct=simulation.total_return_pct,
+        sharpe=result["sharpe"],
         return_before_costs_pct=result["return_before_costs_pct"],
+        regime_split=RegimeSplit(
+            bull_market_return_pct=result["bull_market_return_pct"],
+            bear_market_return_pct=result["bear_market_return_pct"],
+        ),
+        regime_periods=result["regime_periods"],
         trades=result["trades"],
         equity_curve=result["equity_curve"],
+        buy_and_hold_equity_curve=result["buy_and_hold_equity_curve"],
+        buy_and_hold_return_pct=result["buy_and_hold_return_pct"],
+        indicators=result["indicators"],
     )
+
+
+@router.post("/optimize", response_model=OptimizationResult)
+def optimize_simulation(payload: OptimizationRequest):
+    try:
+        results = optimize_parameter_grid(
+            symbol=payload.stock_symbol,
+            strategy_type=payload.strategy_type,
+            strategy_parameters=payload.strategy_parameters,
+            start_date=payload.start_date,
+            end_date=payload.end_date,
+            initial_capital=payload.initial_capital,
+            fee_pct=payload.fee_pct,
+            slippage_pct=payload.slippage_pct,
+            position_size_pct=payload.position_size_pct,
+            short_windows=payload.short_windows,
+            long_windows=payload.long_windows,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return OptimizationResult(results=results)
 
 
 # Handles GET /api/simulations/{id} — re-fetches a previously saved simulation
@@ -99,6 +136,9 @@ def get_simulation(simulation_id: UUID, db: Session = Depends(get_db)):
         final_capital=simulation.final_capital,
         total_return_pct=simulation.total_return_pct,
         return_before_costs_pct=0.0,
+        sharpe=0.0,
+        regime_split=RegimeSplit(bull_market_return_pct=0.0, bear_market_return_pct=0.0),
+        regime_periods=[],
         trades=[
             {
                 "trade_type": t.trade_type,

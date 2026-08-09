@@ -1,7 +1,7 @@
 import { isAxiosError } from "axios";
 import { useState } from "react";
-import { runSimulation } from "../api/client";
-import type { SimulationRequest, SimulationResult } from "../types";
+import { optimizeSimulation, runSimulation } from "../api/client";
+import type { OptimizationRequest, OptimizationResult, SimulationRequest, SimulationResult } from "../types";
 
 // Turns whatever got thrown/caught into one displayable string. Not a hook,
 // just a plain helper — no useState, no React involved.
@@ -24,6 +24,9 @@ export function useSimulation() {
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [optimization, setOptimization] = useState<OptimizationResult | null>(null);
+  const [optimizing, setOptimizing] = useState(false);
+  const [optimizationError, setOptimizationError] = useState<string | null>(null);
 
   // Called by SimulatorPage's handleRun(). All the setX calls below happen
   // HERE, in the frontend, in reaction to the backend's HTTP response — the
@@ -46,7 +49,20 @@ export function useSimulation() {
     }
   }
 
+  async function runOptimization(payload: OptimizationRequest) {
+    setOptimizing(true);
+    setOptimizationError(null);
+    try {
+      const data = await optimizeSimulation(payload);
+      setOptimization(data);
+    } catch (err) {
+      setOptimizationError(extractErrorMessage(err));
+    } finally {
+      setOptimizing(false);
+    }
+  }
+
   // Handed back to whatever component calls useSimulation(); SimulatorPage.tsx
   // destructures this into { result, loading, error, run }.
-  return { result, loading, error, run };
+  return { result, loading, error, run, optimization, optimizing, optimizationError, runOptimization };
 }
