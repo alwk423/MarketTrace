@@ -3,6 +3,8 @@ import type {
   CustomStrategyCreateRequest,
   OptimizationRequest,
   OptimizationResult,
+  PortfolioSimulationRequest,
+  PortfolioSimulationResult,
   SimulationRequest,
   SimulationResult,
   StrategyCatalogEntry,
@@ -32,6 +34,15 @@ export async function runSimulation(payload: SimulationRequest): Promise<Simulat
 
 export async function optimizeSimulation(payload: OptimizationRequest): Promise<OptimizationResult> {
   const { data } = await client.post<OptimizationResult>("/simulations/optimize", payload);
+  return data;
+}
+
+// POST /api/simulations/portfolio -> runs the strategy across a basket of
+// symbols and returns per-symbol results plus a combined equity curve.
+export async function runPortfolioSimulation(
+  payload: PortfolioSimulationRequest,
+): Promise<PortfolioSimulationResult> {
+  const { data } = await client.post<PortfolioSimulationResult>("/simulations/portfolio", payload);
   return data;
 }
 

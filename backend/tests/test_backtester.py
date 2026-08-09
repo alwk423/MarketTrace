@@ -150,3 +150,89 @@ def test_optimize_parameter_grid_returns_grid(monkeypatch):
         {"parameters": {"short_window": 5, "long_window": 15}, "return_pct": 20.0, "sharpe": 5.0},
         {"parameters": {"short_window": 10, "long_window": 15}, "return_pct": 25.0, "sharpe": 10.0},
     ]
+
+
+def _fake_symbol_result(final_capital: float, initial_capital: float) -> dict:
+    dates = pd.date_range("2024-01-01", periods=2)
+    equity_curve = [
+        {"date": dates[0], "price": 100.0, "equity": initial_capital},
+        {"date": dates[1], "price": 100.0, "equity": final_capital},
+    ]
+    return {
+        "trades": [],
+        "equity_curve": equity_curve,
+        "final_capital": final_capital,
+        "total_return_pct": (final_capital / initial_capital - 1) * 100,
+        "sharpe": 1.0,
+        "return_before_costs_pct": 0.0,
+        "buy_and_hold_equity_curve": equity_curve,
+        "buy_and_hold_return_pct": (final_capital / initial_capital - 1) * 100,
+        "indicators": {},
+        "bull_market_return_pct": 0.0,
+        "bear_market_return_pct": 0.0,
+        "regime_periods": [],
+    }
+
+
+def test_run_portfolio_backtest_splits_capital_equally_by_default(monkeypatch):
+    calls = []
+
+    def fake_run_backtest(**kwargs):
+        calls.append((kwargs["symbol"], kwargs["initial_capital"]))
+        # Each symbol doubles whatever capital it was allocated.
+        return _fake_symbol_result(final_capital=kwargs["initial_capital"] * 2, initial_capital=kwargs["initial_capital"])
+
+    monkeypatch.setattr(backtester, "run_backtest", fake_run_backtest)
+
+    result = backtester.run_portfolio_backtest(
+        symbols=["aapl", "msft"],
+        weights=None,
+        strategy_type=StrategyType.SMA_CROSSOVER,
+        parameters={},
+        start_date=pd.Timestamp("2024-01-01").date(),
+        end_date=pd.Timestamp("2024-01-02").date(),
+        initial_capital=1000.0,
+    )
+
+    assert calls == [("AAPL", 500.0), ("MSFT", 500.0)]
+    assert [s["symbol"] for s in result["symbols"]] == ["AAPL", "MSFT"]
+    assert [s["weight"] for s in result["symbols"]] == pytest.approx([0.5, 0.5])
+    # Every dollar doubled, so the combined portfolio should double too.
+    assert result["final_capital"] == pytest.approx(2000.0)
+    assert result["total_return_pct"] == pytest.approx(100.0)
+
+
+def test_run_portfolio_backtest_respects_custom_weights(monkeypatch):
+    calls = []
+
+    def fake_run_backtest(**kwargs):
+        calls.append((kwargs["symbol"], kwargs["initial_capital"]))
+        return _fake_symbol_result(final_capital=kwargs["initial_capital"], initial_capital=kwargs["initial_capital"])
+
+    monkeypatch.setattr(backtester, "run_backtest", fake_run_backtest)
+
+    result = backtester.run_portfolio_backtest(
+        symbols=["AAPL", "MSFT"],
+        weights={"AAPL": 3, "MSFT": 1},
+        strategy_type=StrategyType.SMA_CROSSOVER,
+        parameters={},
+        start_date=pd.Timestamp("2024-01-01").date(),
+        end_date=pd.Timestamp("2024-01-02").date(),
+        initial_capital=1000.0,
+    )
+
+    assert calls == [("AAPL", 750.0), ("MSFT", 250.0)]
+    assert [s["weight"] for s in result["symbols"]] == pytest.approx([0.75, 0.25])
+
+
+def test_run_portfolio_backtest_requires_at_least_one_symbol():
+    with pytest.raises(ValueError):
+        backtester.run_portfolio_backtest(
+            symbols=[],
+            weights=None,
+            strategy_type=StrategyType.SMA_CROSSOVER,
+            parameters={},
+            start_date=pd.Timestamp("2024-01-01").date(),
+            end_date=pd.Timestamp("2024-01-02").date(),
+            initial_capital=1000.0,
+        )

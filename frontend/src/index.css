@@ -58,12 +58,65 @@ select {
 
 .controls {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 1rem;
-  align-items: flex-end;
   margin-bottom: 1.5rem;
   padding-bottom: 1.5rem;
   border-bottom: 1px solid var(--border);
+}
+
+/* Every direct child of .controls (the symbol card, the backtest-window /
+   strategy card pair) is its own bounded box - see .control-card below -
+   rather than labels sitting directly on the page background. Bounded boxes
+   of differing height read as a dashboard of independently-sized widgets;
+   unbounded ones at differing heights just read as misaligned. */
+.control-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel-strong);
+}
+
+.control-card-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+/* Backtest-window card (left) and strategy card (right). The strategy card
+   is usually taller - it carries its own parameter fields on top of the
+   picker - but since both are self-contained cards that's expected, not a
+   misalignment to fix. */
+.controls-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(320px, 1.5fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.controls-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+/* Nested one level inside a .control-card, .advanced-settings doesn't need
+   its own border/background too - that reads as a box-in-a-box. Its parent
+   card's border is the only boundary this needs. */
+.control-card .advanced-settings {
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.control-card .advanced-settings[open] {
+  padding: 0;
 }
 
 .controls label {
@@ -580,6 +633,249 @@ td.sell {
   font-weight: 600;
 }
 
+.symbol-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.mode-toggle {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.5rem !important;
+}
+
+.mode-toggle input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--accent-bright);
+}
+
+.symbol-tag-input {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: min(100%, 280px);
+}
+
+.symbol-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.symbol-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.3rem 0.3rem 0.7rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--panel-sunken);
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.symbol-chip button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: auto;
+  width: 1.3rem;
+  height: 1.3rem;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.symbol-chip button:hover {
+  background: rgba(255, 77, 106, 0.16);
+  color: var(--red);
+}
+
+.portfolio-weights {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-sunken);
+  min-width: min(100%, 340px);
+  /* Left uncapped, a slider track stretches to the full row width regardless
+     of how many symbols are in the basket, which reads as oversized for a
+     2-3 stock basket - cap it at a size that still gives comfortable drag
+     precision without dominating the row. */
+  max-width: 34rem;
+}
+
+.portfolio-weights-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.portfolio-weights-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.weight-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.weight-row {
+  display: grid;
+  grid-template-columns: 3.5rem 1fr 4.2rem;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.weight-row-symbol {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.weight-row input[type="range"] {
+  width: 100%;
+  min-height: auto;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  accent-color: var(--accent-bright);
+}
+
+.weight-row-value {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.weight-row-value input {
+  min-height: 1.9rem;
+  width: 3rem;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.weight-total {
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.symbol-autocomplete {
+  position: relative;
+}
+
+.symbol-autocomplete-menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.3rem);
+  left: 0;
+  right: 0;
+  min-width: 22rem;
+  max-height: 20rem;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0.3rem;
+  list-style: none;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--panel-strong);
+  box-shadow: var(--shadow);
+}
+
+.symbol-autocomplete-option {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.symbol-autocomplete-option.highlighted,
+.symbol-autocomplete-option:hover {
+  background: var(--panel-sunken);
+}
+
+.symbol-autocomplete-symbol {
+  flex: none;
+  min-width: 3.2rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.symbol-autocomplete-name {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.symbol-autocomplete-status {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.sortable-th {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  min-height: auto;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.sortable-th:hover {
+  color: var(--text);
+  background: transparent;
+}
+
+.sort-arrow {
+  font-size: 0.65rem;
+}
+
 @media (max-width: 900px) {
   body {
     padding: 1rem;
@@ -591,6 +887,10 @@ td.sell {
 
   .heatmap-grid {
     --heatmap-label-width: 72px;
+  }
+
+  .controls-grid {
+    grid-template-columns: 1fr;
   }
 }
 

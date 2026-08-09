@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.simulation import Simulation, Trade
 from app.models.strategy import Strategy as StrategyModel
+from app.schemas.portfolio import PortfolioSimulationRequest, PortfolioSimulationResult
 from app.schemas.simulation import (
     OptimizationRequest,
     OptimizationResult,
@@ -13,7 +14,7 @@ from app.schemas.simulation import (
     SimulationRequest,
     SimulationResult,
 )
-from app.services.backtester import optimize_parameter_grid, run_backtest
+from app.services.backtester import optimize_parameter_grid, run_backtest, run_portfolio_backtest
 
 router = APIRouter(prefix="/api/simulations", tags=["simulations"])
 
@@ -116,6 +117,31 @@ def optimize_simulation(payload: OptimizationRequest):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     return OptimizationResult(results=results)
+
+
+# Handles POST /api/simulations/portfolio — runs the same strategy across a
+# basket of symbols, splitting initial_capital across them by weight (equal
+# split if weights is empty), and returns both a per-symbol comparison and a
+# combined portfolio-level equity curve. Not persisted, same as /optimize.
+@router.post("/portfolio", response_model=PortfolioSimulationResult)
+def create_portfolio_simulation(payload: PortfolioSimulationRequest):
+    try:
+        result = run_portfolio_backtest(
+            symbols=payload.stock_symbols,
+            weights=payload.weights,
+            strategy_type=payload.strategy_type,
+            parameters=payload.strategy_parameters,
+            start_date=payload.start_date,
+            end_date=payload.end_date,
+            initial_capital=payload.initial_capital,
+            fee_pct=payload.fee_pct,
+            slippage_pct=payload.slippage_pct,
+            position_size_pct=payload.position_size_pct,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    return PortfolioSimulationResult(**result)
 
 
 # Handles GET /api/simulations/{id} — re-fetches a previously saved simulation
