@@ -1,0 +1,86 @@
+export interface PopularSymbol {
+  symbol: string;
+  name: string;
+}
+
+// A curated list of widely-traded tickers for the symbol dropdown/autocomplete.
+// This is a UI convenience, not a restriction — the backend accepts any symbol
+// yfinance can resolve; typing an unlisted ticker still works.
+export const POPULAR_SYMBOLS: PopularSymbol[] = [
+  { symbol: "AAPL", name: "Apple Inc." },
+  { symbol: "MSFT", name: "Microsoft Corp." },
+  { symbol: "GOOGL", name: "Alphabet Inc. (Class A)" },
+  { symbol: "AMZN", name: "Amazon.com Inc." },
+  { symbol: "NVDA", name: "NVIDIA Corp." },
+  { symbol: "META", name: "Meta Platforms Inc." },
+  { symbol: "TSLA", name: "Tesla Inc." },
+  { symbol: "AVGO", name: "Broadcom Inc." },
+  { symbol: "NFLX", name: "Netflix Inc." },
+  { symbol: "AMD", name: "Advanced Micro Devices" },
+  { symbol: "CRM", name: "Salesforce Inc." },
+  { symbol: "ORCL", name: "Oracle Corp." },
+  { symbol: "ADBE", name: "Adobe Inc." },
+  { symbol: "INTC", name: "Intel Corp." },
+  { symbol: "CSCO", name: "Cisco Systems Inc." },
+  { symbol: "IBM", name: "IBM Corp." },
+  { symbol: "QCOM", name: "Qualcomm Inc." },
+  { symbol: "UBER", name: "Uber Technologies Inc." },
+  { symbol: "SHOP", name: "Shopify Inc." },
+  { symbol: "PLTR", name: "Palantir Technologies" },
+
+  { symbol: "JPM", name: "JPMorgan Chase & Co." },
+  { symbol: "BAC", name: "Bank of America Corp." },
+  { symbol: "WFC", name: "Wells Fargo & Co." },
+  { symbol: "GS", name: "Goldman Sachs Group" },
+  { symbol: "MS", name: "Morgan Stanley" },
+  { symbol: "V", name: "Visa Inc." },
+  { symbol: "MA", name: "Mastercard Inc." },
+  { symbol: "PYPL", name: "PayPal Holdings Inc." },
+  { symbol: "AXP", name: "American Express Co." },
+  { symbol: "BRK-B", name: "Berkshire Hathaway (Class B)" },
+
+  { symbol: "UNH", name: "UnitedHealth Group" },
+  { symbol: "JNJ", name: "Johnson & Johnson" },
+  { symbol: "LLY", name: "Eli Lilly and Co." },
+  { symbol: "PFE", name: "Pfizer Inc." },
+  { symbol: "ABBV", name: "AbbVie Inc." },
+  { symbol: "MRK", name: "Merck & Co." },
+  { symbol: "TMO", name: "Thermo Fisher Scientific" },
+  { symbol: "ABT", name: "Abbott Laboratories" },
+
+  { symbol: "WMT", name: "Walmart Inc." },
+  { symbol: "COST", name: "Costco Wholesale Corp." },
+  { symbol: "PG", name: "Procter & Gamble Co." },
+  { symbol: "KO", name: "Coca-Cola Co." },
+  { symbol: "PEP", name: "PepsiCo Inc." },
+  { symbol: "MCD", name: "McDonald's Corp." },
+  { symbol: "SBUX", name: "Starbucks Corp." },
+  { symbol: "NKE", name: "Nike Inc." },
+  { symbol: "HD", name: "Home Depot Inc." },
+  { symbol: "TGT", name: "Target Corp." },
+  { symbol: "DIS", name: "Walt Disney Co." },
+
+  { symbol: "XOM", name: "Exxon Mobil Corp." },
+  { symbol: "CVX", name: "Chevron Corp." },
+  { symbol: "BA", name: "Boeing Co." },
+  { symbol: "CAT", name: "Caterpillar Inc." },
+  { symbol: "GE", name: "General Electric Co." },
+  { symbol: "F", name: "Ford Motor Co." },
+  { symbol: "GM", name: "General Motors Co." },
+
+  { symbol: "SPY", name: "SPDR S&P 500 ETF Trust" },
+  { symbol: "QQQ", name: "Invesco QQQ Trust (Nasdaq-100)" },
+  { symbol: "DIA", name: "SPDR Dow Jones Industrial Avg ETF" },
+  { symbol: "IWM", name: "iShares Russell 2000 ETF" },
+  { symbol: "VTI", name: "Vanguard Total Stock Market ETF" },
+  { symbol: "VOO", name: "Vanguard S&P 500 ETF" },
+  { symbol: "GLD", name: "SPDR Gold Shares" },
+  { symbol: "ARKK", name: "ARK Innovation ETF" },
+
+  { symbol: "COIN", name: "Coinbase Global Inc." },
+  { symbol: "SQ", name: "Block Inc." },
+  { symbol: "SNAP", name: "Snap Inc." },
+  { symbol: "ABNB", name: "Airbnb Inc." },
+  { symbol: "BABA", name: "Alibaba Group" },
+  { symbol: "SOFI", name: "SoFi Technologies Inc." },
+];

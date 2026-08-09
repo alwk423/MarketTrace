@@ -259,6 +259,137 @@ def run_backtest(
     }
 
 
+def _equity_series(equity_curve: list[dict]) -> pd.Series:
+    # Reshapes one symbol's [{"date", "equity"}, ...] into a date-indexed
+    # Series purely so _combine_equity_series can line multiple symbols up
+    # by date and add them - no math happens here.
+    if not equity_curve:
+        return pd.Series(dtype=float)
+    return pd.Series(
+        [point["equity"] for point in equity_curve],
+        index=pd.to_datetime([point["date"] for point in equity_curve]),
+    ).sort_index()
+
+
+def _combine_equity_series(series_list: list[pd.Series]) -> list[dict]:
+    # Portfolio equity on a given date is just every symbol's dollar equity
+    # on that date added together - this is the entire "combine" step.
+    non_empty = [series for series in series_list if not series.empty]
+    if not non_empty:
+        return []
+
+    # axis=1 concat lines the series up side by side by date, e.g.:
+    #   date        AAPL    MSFT
+    #   Day1        7000    3000
+    #   Day2        7140    2970
+    combined = pd.concat(non_empty, axis=1)
+    # Forward/back-fill each symbol's equity across dates it didn't trade (e.g. a
+    # different holiday calendar or listing date). Without this, a missing cell
+    # is NaN and .sum(axis=1) below treats NaN as 0 - silently dropping that
+    # symbol's capital from the total for that day instead of carrying it over.
+    combined = combined.ffill().bfill()
+    # Row-wise sum: Day1 -> 7000+3000=10000, Day2 -> 7140+2970=10110, etc.
+    total = combined.sum(axis=1)
+    return [{"date": timestamp, "equity": float(value)} for timestamp, value in total.items()]
+
+
+def run_portfolio_backtest(
+    symbols: list[str],
+    weights: dict[str, float] | None,
+    strategy_type: StrategyType,
+    parameters: dict,
+    start_date: date,
+    end_date: date,
+    initial_capital: float,
+    fee_pct: float = 0.1,
+    slippage_pct: float = 0.05,
+    position_size_pct: float = 100.0,
+) -> dict:
+    """Run the same strategy independently across a basket of symbols, splitting
+    initial capital across them by weight (equal split by default), then combine
+    the per-symbol equity curves into one portfolio-level equity curve."""
+    if not symbols:
+        raise ValueError("At least one symbol is required")
+
+    unique_symbols = list(dict.fromkeys(symbol.upper() for symbol in symbols))
+
+    # Weights don't need to sum to 1 (or 100) coming in - dividing by their own
+    # total normalizes whatever was supplied. No usable weights -> equal split.
+    raw_weights = {symbol: max(0.0, (weights or {}).get(symbol, 0.0)) for symbol in unique_symbols}
+    weight_total = sum(raw_weights.values())
+    if weight_total <= 0:
+        normalized_weights = {symbol: 1.0 / len(unique_symbols) for symbol in unique_symbols}
+    else:
+        normalized_weights = {symbol: weight / weight_total for symbol, weight in raw_weights.items()}
+
+    symbol_results: list[dict] = []
+    equity_series_list: list[pd.Series] = []
+    buy_and_hold_series_list: list[pd.Series] = []
+
+    for symbol in unique_symbols:
+        weight = normalized_weights[symbol]
+        # Each symbol is backtested independently with just its slice of
+        # capital - fee/slippage/return math is all percentage-based, so a
+        # symbol's total_return_pct/sharpe come out identical regardless of
+        # how much capital it's given. That's what lets the same run double
+        # as both the per-symbol comparison row AND a dollar-accurate input
+        # to the combined curve below.
+        allocated_capital = initial_capital * weight
+        result = run_backtest(
+            symbol=symbol,
+            strategy_type=strategy_type,
+            parameters=parameters,
+            start_date=start_date,
+            end_date=end_date,
+            initial_capital=allocated_capital,
+            fee_pct=fee_pct,
+            slippage_pct=slippage_pct,
+            position_size_pct=position_size_pct,
+        )
+        symbol_results.append(
+            {
+                "symbol": symbol,
+                "weight": weight,
+                "allocated_capital": allocated_capital,
+                "final_capital": result["final_capital"],
+                "total_return_pct": result["total_return_pct"],
+                "return_before_costs_pct": result["return_before_costs_pct"],
+                "sharpe": result["sharpe"],
+                "buy_and_hold_return_pct": result["buy_and_hold_return_pct"],
+                "trades": result["trades"],
+                "equity_curve": result["equity_curve"],
+            }
+        )
+        equity_series_list.append(_equity_series(result["equity_curve"]))
+        buy_and_hold_series_list.append(_equity_series(result["buy_and_hold_equity_curve"]))
+
+    combined_equity_curve = _combine_equity_series(equity_series_list)
+    combined_buy_and_hold_curve = _combine_equity_series(buy_and_hold_series_list)
+
+    final_capital = combined_equity_curve[-1]["equity"] if combined_equity_curve else initial_capital
+    # Summing dollar curves then computing % return is equivalent to a
+    # weight-average of each symbol's own total_return_pct.
+    total_return_pct = (final_capital / initial_capital - 1) * 100
+    # Sharpe is NOT a weighted average of the per-symbol Sharpes - it has to
+    # be recomputed off the combined curve's own day-to-day % swings, since
+    # symbols rarely move in lockstep (diversification changes volatility).
+    sharpe = _calculate_sharpe_ratio(combined_equity_curve)
+
+    final_buy_and_hold = combined_buy_and_hold_curve[-1]["equity"] if combined_buy_and_hold_curve else initial_capital
+    buy_and_hold_return_pct = (final_buy_and_hold / initial_capital - 1) * 100
+
+    return {
+        "symbols": symbol_results,
+        "initial_capital": initial_capital,
+        "final_capital": final_capital,
+        "total_return_pct": total_return_pct,
+        "sharpe": sharpe,
+        "combined_equity_curve": combined_equity_curve,
+        "combined_buy_and_hold_equity_curve": combined_buy_and_hold_curve,
+        "combined_buy_and_hold_return_pct": buy_and_hold_return_pct,
+    }
+
+
 def optimize_parameter_grid(
     symbol: str,
     strategy_type: StrategyType,

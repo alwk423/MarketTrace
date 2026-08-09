@@ -1,7 +1,14 @@
 import { isAxiosError } from "axios";
 import { useState } from "react";
-import { optimizeSimulation, runSimulation } from "../api/client";
-import type { OptimizationRequest, OptimizationResult, SimulationRequest, SimulationResult } from "../types";
+import { optimizeSimulation, runPortfolioSimulation, runSimulation } from "../api/client";
+import type {
+  OptimizationRequest,
+  OptimizationResult,
+  PortfolioSimulationRequest,
+  PortfolioSimulationResult,
+  SimulationRequest,
+  SimulationResult,
+} from "../types";
 
 // Turns whatever got thrown/caught into one displayable string. Not a hook,
 // just a plain helper — no useState, no React involved.
@@ -27,6 +34,9 @@ export function useSimulation() {
   const [optimization, setOptimization] = useState<OptimizationResult | null>(null);
   const [optimizing, setOptimizing] = useState(false);
   const [optimizationError, setOptimizationError] = useState<string | null>(null);
+  const [portfolioResult, setPortfolioResult] = useState<PortfolioSimulationResult | null>(null);
+  const [portfolioLoading, setPortfolioLoading] = useState(false);
+  const [portfolioError, setPortfolioError] = useState<string | null>(null);
 
   // Called by SimulatorPage's handleRun(). All the setX calls below happen
   // HERE, in the frontend, in reaction to the backend's HTTP response — the
@@ -62,7 +72,33 @@ export function useSimulation() {
     }
   }
 
+  async function runPortfolio(payload: PortfolioSimulationRequest) {
+    setPortfolioLoading(true);
+    setPortfolioError(null);
+    try {
+      const data = await runPortfolioSimulation(payload);
+      setPortfolioResult(data);
+    } catch (err) {
+      setPortfolioError(extractErrorMessage(err));
+    } finally {
+      setPortfolioLoading(false);
+    }
+  }
+
   // Handed back to whatever component calls useSimulation(); SimulatorPage.tsx
   // destructures this into { result, loading, error, run }.
-  return { result, loading, error, run, optimization, optimizing, optimizationError, runOptimization };
+  return {
+    result,
+    loading,
+    error,
+    run,
+    optimization,
+    optimizing,
+    optimizationError,
+    runOptimization,
+    portfolioResult,
+    portfolioLoading,
+    portfolioError,
+    runPortfolio,
+  };
 }

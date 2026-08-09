@@ -2,12 +2,27 @@ import { useEffect, useState } from "react";
 import { fetchStrategies } from "../api/client";
 import ResultsPanel from "../components/ResultsPanel";
 import OptimizationHeatmap from "../components/OptimizationHeatmap";
+import PortfolioEquityChart from "../components/PortfolioEquityChart";
+import PortfolioResultsPanel from "../components/PortfolioResultsPanel";
+import PortfolioSymbolInput from "../components/PortfolioSymbolInput";
 import StockPicker from "../components/StockPicker";
 import StrategyBuilder from "../components/StrategyBuilder";
 import StrategyPicker from "../components/StrategyPicker";
 import TradeChart from "../components/TradeChart";
 import { useSimulation } from "../hooks/useSimulation";
 import type { CustomStrategyRules, StrategyCatalogEntry } from "../types";
+
+// Even split across `symbols`, expressed as whole percentages that sum to
+// exactly 100 (the remainder from rounding goes to the last symbol).
+function equalSplitWeights(symbols: string[]): Record<string, number> {
+  if (symbols.length === 0) return {};
+  const base = Math.floor(100 / symbols.length);
+  const weights: Record<string, number> = {};
+  symbols.forEach((symbol, index) => {
+    weights[symbol] = index === symbols.length - 1 ? 100 - base * (symbols.length - 1) : base;
+  });
+  return weights;
+}
 
 const today = new Date().toISOString().slice(0, 10);
 const oneYearAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -32,6 +47,12 @@ export default function SimulatorPage() {
   // component (which re-renders its JSX further down with the new value).
   const [strategies, setStrategies] = useState<StrategyCatalogEntry[]>([]);
   const [symbol, setSymbol] = useState("AAPL");
+  // Portfolio mode swaps the single-symbol StockPicker for a multi-symbol tag
+  // input; portfolioSymbols/portfolioWeights are only used while it's on, so
+  // toggling back to single-symbol mode doesn't lose the basket you built.
+  const [portfolioMode, setPortfolioMode] = useState(false);
+  const [portfolioSymbols, setPortfolioSymbols] = useState<string[]>([]);
+  const [portfolioWeights, setPortfolioWeights] = useState<Record<string, number>>({});
   const [selectedStrategy, setSelectedStrategy] = useState<StrategyCatalogEntry | null>(null);
   const [parameters, setParameters] = useState<Record<string, number>>({});
   // Rules for the currently selected custom strategy (null for built-ins).
@@ -57,6 +78,10 @@ export default function SimulatorPage() {
     optimizing,
     optimizationError,
     runOptimization,
+    portfolioResult,
+    portfolioLoading,
+    portfolioError,
+    runPortfolio,
   } = useSimulation();
 
   // useEffect(fn, []) runs `fn` exactly once, right after first render.
@@ -97,6 +122,25 @@ export default function SimulatorPage() {
       return { rules: customRules };
     }
     return parameters;
+  }
+
+  // Called by PortfolioSymbolInput when a chip is added/removed. New symbols
+  // re-split the whole basket evenly; removing one just drops its weight and
+  // leaves the rest as they were (no need to renormalize server-side, since
+  // the backend normalizes whatever weights it receives).
+  function handlePortfolioSymbolsChange(nextSymbols: string[]) {
+    setPortfolioSymbols(nextSymbols);
+    setPortfolioWeights((current) => {
+      const hasNewSymbol = nextSymbols.some((s) => !(s in current));
+      if (!hasNewSymbol) {
+        const next: Record<string, number> = {};
+        nextSymbols.forEach((s) => {
+          next[s] = current[s];
+        });
+        return next;
+      }
+      return equalSplitWeights(nextSymbols);
+    });
   }
 
   function handleOptimize() {
@@ -142,8 +186,28 @@ export default function SimulatorPage() {
   // Called when the "Run simulation" button is clicked. Bundles up all the
   // current form state into one request object and hands it to the hook's
   // run(), which POSTs it to the backend (see api/client.ts runSimulation).
+  // In portfolio mode, this runs the strategy across the whole symbol basket
+  // instead (see api/client.ts runPortfolioSimulation).
   function handleRun() {
     if (!selectedStrategy) return;
+
+    if (portfolioMode) {
+      if (portfolioSymbols.length === 0) return;
+      runPortfolio({
+        stock_symbols: portfolioSymbols,
+        weights: portfolioWeights,
+        strategy_type: selectedStrategy.type,
+        strategy_parameters: currentStrategyParameters(),
+        start_date: startDate,
+        end_date: endDate,
+        initial_capital: initialCapital,
+        fee_pct: feePct,
+        slippage_pct: slippagePct,
+        position_size_pct: positionSizePct,
+      });
+      return;
+    }
+
     run({
       stock_symbol: symbol,
       strategy_type: selectedStrategy.type,
@@ -162,11 +226,30 @@ export default function SimulatorPage() {
       <h1>MarketTrace</h1>
 
       <section className="controls">
+        <label className="mode-toggle">
+          <input
+            type="checkbox"
+            checked={portfolioMode}
+            onChange={(e) => setPortfolioMode(e.target.checked)}
+          />
+          Portfolio mode
+        </label>
+
         {/* Controlled component pattern: parent passes down the current
             value + an onChange callback; the child calls that callback
             (e.g. setSymbol) whenever the user types, which updates state
-            here and flows the new value back down as a prop. */}
-        <StockPicker value={symbol} onChange={setSymbol} />
+            here and flows the new value back down as a prop. Portfolio mode
+            swaps the single-symbol field for a multi-symbol tag input. */}
+        {portfolioMode ? (
+          <PortfolioSymbolInput
+            symbols={portfolioSymbols}
+            weights={portfolioWeights}
+            onSymbolsChange={handlePortfolioSymbolsChange}
+            onWeightsChange={setPortfolioWeights}
+          />
+        ) : (
+          <StockPicker value={symbol} onChange={setSymbol} />
+        )}
 
         <label>
           Start date
@@ -232,16 +315,31 @@ export default function SimulatorPage() {
           </div>
         </details>
 
-        {/* Disabled while a request is in flight or before any strategy has
-            loaded/been picked; label swaps to a loading state too. */}
+        {/* Disabled while a request is in flight, before any strategy has
+            loaded/been picked, or (portfolio mode) before any symbol has
+            been added; label swaps to a loading state too. */}
         <div className="action-row">
-          <button onClick={handleRun} disabled={loading || !selectedStrategy}>
-            {loading ? "Running..." : "Run simulation"}
+          <button
+            onClick={handleRun}
+            disabled={
+              loading ||
+              portfolioLoading ||
+              !selectedStrategy ||
+              (portfolioMode && portfolioSymbols.length === 0)
+            }
+          >
+            {loading || portfolioLoading ? "Running..." : "Run simulation"}
           </button>
           <button
             onClick={handleOptimize}
-            disabled={optimizing || !selectedStrategy || selectedStrategy.type !== "sma_crossover"}
+            disabled={
+              optimizing ||
+              !selectedStrategy ||
+              selectedStrategy.type !== "sma_crossover" ||
+              portfolioMode
+            }
             className="secondary-button"
+            title={portfolioMode ? "Parameter optimization runs against a single symbol" : undefined}
           >
             {optimizing ? "Scanning grid..." : "Optimize parameters"}
           </button>
@@ -258,8 +356,9 @@ export default function SimulatorPage() {
           nothing shows until there's an error / a result to display. */}
       {error && <p className="error">{error}</p>}
       {optimizationError && <p className="error">{optimizationError}</p>}
+      {portfolioError && <p className="error">{portfolioError}</p>}
 
-      {optimization && selectedStrategy?.type === "sma_crossover" && (
+      {optimization && selectedStrategy?.type === "sma_crossover" && !portfolioMode && (
         <OptimizationHeatmap
           points={optimization.results}
           selectedParameters={
@@ -274,7 +373,14 @@ export default function SimulatorPage() {
         />
       )}
 
-      {result && (
+      {portfolioMode && portfolioResult && (
+        <section className="results">
+          <PortfolioEquityChart result={portfolioResult} />
+          <PortfolioResultsPanel result={portfolioResult} />
+        </section>
+      )}
+
+      {!portfolioMode && result && (
         <section className="results">
           <TradeChart result={result} parameters={parameters} />
           <ResultsPanel result={result} />

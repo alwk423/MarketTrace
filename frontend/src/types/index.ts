@@ -127,3 +127,45 @@ export interface SimulationRequest {
   slippage_pct: number;
   position_size_pct: number;
 }
+
+export interface PortfolioPoint {
+  date: string;
+  equity: number;
+}
+
+export interface PortfolioSymbolResult {
+  symbol: string;
+  weight: number;
+  allocated_capital: number;
+  final_capital: number;
+  total_return_pct: number;
+  return_before_costs_pct: number;
+  sharpe: number;
+  buy_and_hold_return_pct: number | null;
+  trades: Trade[];
+  equity_curve: EquityPoint[];
+}
+
+export interface PortfolioSimulationResult {
+  symbols: PortfolioSymbolResult[];
+  initial_capital: number;
+  final_capital: number;
+  total_return_pct: number;
+  sharpe: number;
+  combined_equity_curve: PortfolioPoint[];
+  combined_buy_and_hold_equity_curve: PortfolioPoint[];
+  combined_buy_and_hold_return_pct: number | null;
+}
+
+export interface PortfolioSimulationRequest {
+  stock_symbols: string[];
+  weights: Record<string, number>;
+  strategy_type: StrategyType;
+  strategy_parameters: Record<string, unknown>;
+  start_date: string;
+  end_date: string;
+  initial_capital: number;
+  fee_pct: number;
+  slippage_pct: number;
+  position_size_pct: number;
+}
