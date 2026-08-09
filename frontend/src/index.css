@@ -1,23 +1,24 @@
 :root {
-  color-scheme: light;
+  color-scheme: dark;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
   font-variant-numeric: tabular-nums;
-  --bg: #eef1f5;
-  --panel: #ffffff;
-  --panel-strong: #ffffff;
-  --panel-sunken: #f6f7f9;
-  --border: rgba(15, 23, 42, 0.10);
-  --border-strong: rgba(15, 23, 42, 0.16);
-  --text: #0f172a;
-  --muted: #5b6472;
-  --shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 10px 24px rgba(15, 23, 42, 0.06);
-  --accent: #1d4e89;
-  --accent-strong: #133a6a;
-  --green: #0f7a3d;
-  --red: #b3261e;
-  --heat-neutral: #6b6660;
-  --heat-red: #8f2018;
-  --heat-green: #0f6b31;
+  --bg: #0a0e14;
+  --panel: #12161f;
+  --panel-strong: #161b26;
+  --panel-sunken: #0d1119;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --text: #e8eaed;
+  --muted: #9aa3b2;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px rgba(0, 0, 0, 0.45);
+  --accent: #2568d6;
+  --accent-strong: #1f56b8;
+  --accent-bright: #3d8bff;
+  --green: #1fd68f;
+  --red: #ff4d6a;
+  --heat-neutral: #333a47;
+  --heat-red: #c81e3a;
+  --heat-green: #0c7a4e;
 }
 
 * {
@@ -90,8 +91,8 @@ select {
 .controls select:focus,
 .advanced-settings input:focus {
   outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(29, 78, 137, 0.14);
+  border-color: var(--accent-bright);
+  box-shadow: 0 0 0 3px rgba(61, 139, 255, 0.25);
 }
 
 .strategy-picker {
@@ -365,11 +366,11 @@ button:disabled {
 }
 
 .regime-card.bull {
-  box-shadow: inset 0 0 0 1px rgba(15, 122, 61, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(31, 214, 143, 0.35);
 }
 
 .regime-card.bear {
-  box-shadow: inset 0 0 0 1px rgba(179, 38, 30, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(255, 77, 106, 0.35);
 }
 
 .positive {

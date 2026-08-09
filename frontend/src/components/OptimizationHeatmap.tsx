@@ -16,10 +16,10 @@ function pointKey(parameters: { short_window: number; long_window: number }) {
 }
 
 // Diverging loss/gain ramp, anchored on 0% return. All three stops stay dark
-// enough that white cell text clears 4.5:1 contrast across the whole range.
-const HEAT_RED: [number, number, number] = [143, 32, 24]; // #8f2018 — max loss
-const HEAT_NEUTRAL: [number, number, number] = [107, 102, 96]; // #6b6660 — 0%
-const HEAT_GREEN: [number, number, number] = [15, 107, 49]; // #0f6b31 — max gain
+// enough that white cell text clears 4.5:1 contrast against them (verified).
+const HEAT_RED: [number, number, number] = [200, 30, 58]; // #c81e3a — max loss
+const HEAT_NEUTRAL: [number, number, number] = [51, 58, 71]; // #333a47 — 0%
+const HEAT_GREEN: [number, number, number] = [12, 122, 78]; // #0c7a4e — max gain
 
 function lerpRgb(a: [number, number, number], b: [number, number, number], t: number) {
   return a.map((channel, i) => Math.round(channel + (b[i] - channel) * t)) as [number, number, number];
@@ -49,7 +49,10 @@ export default function OptimizationHeatmap({ points, selectedParameters, onSele
       <div className="panel-header">
         <div>
           <h2>Parameter heatmap</h2>
-          <p>Short window on the horizontal axis, long window on the vertical axis. Higher return means a hotter cell.</p>
+          <p>
+            Short window on the horizontal axis, long window on the vertical axis — hotter (green) cells returned
+            more, cooler (red) cells lost money. Click a cell to load that pair into the simulation above.
+          </p>
         </div>
         <span className="panel-chip">{points.length} runs</span>
       </div>
@@ -101,9 +104,9 @@ export default function OptimizationHeatmap({ points, selectedParameters, onSele
         <div className="heatmap-legend" aria-hidden="true">
           <div className="heatmap-legend-bar" />
           <div className="heatmap-legend-labels">
-            <span>-{maxAbsReturn.toFixed(1)}%</span>
+            <span>Loss · -{maxAbsReturn.toFixed(1)}%</span>
             <span>0%</span>
-            <span>+{maxAbsReturn.toFixed(1)}%</span>
+            <span>Gain · +{maxAbsReturn.toFixed(1)}%</span>
           </div>
         </div>
       )}

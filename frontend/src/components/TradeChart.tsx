@@ -20,10 +20,20 @@ interface TradeChartProps {
 }
 
 const INDICATOR_COLORS: Record<string, string> = {
-  short_sma: "#f97316",
-  long_sma: "#7c3aed",
-  rsi: "#8b5cf6",
+  short_sma: "#ffa63d",
+  long_sma: "#a78bfa",
+  rsi: "#c084fc",
 };
+
+const CHART_GRID = "#232838";
+const CHART_AXIS_TICK = { fill: "#9aa3b2", fontSize: 12 };
+const CHART_TOOLTIP_STYLE = {
+  background: "#161b26",
+  border: "1px solid rgba(255, 255, 255, 0.12)",
+  borderRadius: 8,
+  color: "#e8eaed",
+};
+const CHART_LEGEND_STYLE = { color: "#9aa3b2" };
 
 const INDICATOR_LABELS: Record<string, string> = {
   short_sma: "Short SMA",
@@ -77,11 +87,11 @@ export default function TradeChart({ result, parameters }: TradeChartProps) {
     <div className="trade-chart">
       <ResponsiveContainer width="100%" height={400}>
         <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="date" minTickGap={30} />
-          <YAxis domain={["auto", "auto"]} />
-          <Tooltip />
-          <Legend />
+          <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
+          <XAxis dataKey="date" minTickGap={30} tick={CHART_AXIS_TICK} stroke={CHART_GRID} />
+          <YAxis domain={["auto", "auto"]} tick={CHART_AXIS_TICK} stroke={CHART_GRID} />
+          <Tooltip contentStyle={CHART_TOOLTIP_STYLE} labelStyle={{ color: "#9aa3b2" }} />
+          <Legend wrapperStyle={CHART_LEGEND_STYLE} />
           {result.regime_periods.map((period) => (
             <ReferenceArea
               key={`${period.regime}-${period.start_date}-${period.end_date}`}
@@ -90,15 +100,15 @@ export default function TradeChart({ result, parameters }: TradeChartProps) {
               y1={minPrice - padding}
               y2={maxPrice + padding}
               ifOverflow="extendDomain"
-              fill={period.regime === "bull" ? "rgba(15, 122, 61, 0.08)" : "rgba(179, 38, 30, 0.08)"}
+              fill={period.regime === "bull" ? "rgba(31, 214, 143, 0.12)" : "rgba(255, 77, 106, 0.10)"}
               strokeOpacity={0}
             />
           ))}
-          <Line type="monotone" dataKey="price" stroke="#1d4e89" dot={false} name="Price" />
+          <Line type="monotone" dataKey="price" stroke="#3d8bff" dot={false} name="Price" />
           <Line
             type="monotone"
             dataKey="buy_and_hold"
-            stroke="#5b6472"
+            stroke="#9aa3b2"
             strokeDasharray="4 3"
             dot={false}
             name="Buy & hold"
@@ -108,7 +118,7 @@ export default function TradeChart({ result, parameters }: TradeChartProps) {
               key={key}
               type="monotone"
               dataKey={key}
-              stroke={INDICATOR_COLORS[key] ?? "#94a3b8"}
+              stroke={INDICATOR_COLORS[key] ?? "#9aa3b2"}
               dot={false}
               name={INDICATOR_LABELS[key] ?? key}
             />
@@ -119,7 +129,7 @@ export default function TradeChart({ result, parameters }: TradeChartProps) {
               x={trade.trade_date.slice(0, 10)}
               y={trade.price}
               r={5}
-              fill={trade.trade_type === "buy" ? "#0f7a3d" : "#b3261e"}
+              fill={trade.trade_type === "buy" ? "#1fd68f" : "#ff4d6a"}
               stroke="none"
             />
           ))}
@@ -129,12 +139,12 @@ export default function TradeChart({ result, parameters }: TradeChartProps) {
       {hasRsi && (
         <ResponsiveContainer width="100%" height={160}>
           <LineChart data={rsiData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" minTickGap={30} />
-            <YAxis domain={[0, 100]} />
-            <Tooltip />
-            <ReferenceLine y={parameters?.oversold ?? 30} stroke="#0f7a3d" strokeDasharray="3 3" />
-            <ReferenceLine y={parameters?.overbought ?? 70} stroke="#b3261e" strokeDasharray="3 3" />
+            <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
+            <XAxis dataKey="date" minTickGap={30} tick={CHART_AXIS_TICK} stroke={CHART_GRID} />
+            <YAxis domain={[0, 100]} tick={CHART_AXIS_TICK} stroke={CHART_GRID} />
+            <Tooltip contentStyle={CHART_TOOLTIP_STYLE} labelStyle={{ color: "#9aa3b2" }} />
+            <ReferenceLine y={parameters?.oversold ?? 30} stroke="#1fd68f" strokeDasharray="3 3" />
+            <ReferenceLine y={parameters?.overbought ?? 70} stroke="#ff4d6a" strokeDasharray="3 3" />
             <Line type="monotone" dataKey="rsi" stroke={INDICATOR_COLORS.rsi} dot={false} name="RSI" />
           </LineChart>
         </ResponsiveContainer>
