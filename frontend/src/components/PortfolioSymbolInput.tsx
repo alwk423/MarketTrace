@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { KeyboardEvent } from "react";
-import SymbolDatalist, { POPULAR_SYMBOLS_DATALIST_ID } from "./SymbolDatalist";
+import SymbolAutocomplete from "./SymbolAutocomplete";
 
 interface PortfolioSymbolInputProps {
   symbols: string[];
@@ -34,7 +34,14 @@ export default function PortfolioSymbolInput({
     onWeightsChange(nextWeights);
   }
 
-  function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+  function setWeight(symbol: string, weight: number) {
+    onWeightsChange({ ...weights, [symbol]: Math.max(0, Math.min(100, weight)) });
+  }
+
+  // Handles the keys SymbolAutocomplete doesn't already own (arrow nav/Escape/
+  // Enter-on-a-highlighted-suggestion) - raw Enter/comma adds whatever text is
+  // typed as its own chip, and Backspace on an empty box pops the last chip.
+  function handleFallbackKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter" || e.key === ",") {
       e.preventDefault();
       addSymbol(draft);
@@ -49,15 +56,13 @@ export default function PortfolioSymbolInput({
     <div className="symbol-tag-input">
       <label>
         Stock symbols (basket)
-        <input
+        <SymbolAutocomplete
           value={draft}
-          onChange={(e) => setDraft(e.target.value.toUpperCase())}
-          onKeyDown={handleKeyDown}
-          onBlur={() => addSymbol(draft)}
+          onChange={setDraft}
+          onSelect={addSymbol}
+          onKeyDown={handleFallbackKeyDown}
           placeholder="Type a symbol, hit enter…"
-          list={POPULAR_SYMBOLS_DATALIST_ID}
         />
-        <SymbolDatalist />
       </label>
 
       {symbols.length > 0 && (
@@ -79,26 +84,39 @@ export default function PortfolioSymbolInput({
 
       {symbols.length > 0 && (
         <div className="portfolio-weights">
-          <span className="portfolio-weights-label">Weight (%, default equal-split)</span>
+          <div className="portfolio-weights-header">
+            <span className="portfolio-weights-label">Weight (default equal-split)</span>
+            <span className={`weight-total ${Math.round(weightTotal) === 100 ? "positive" : "negative"}`}>
+              Total: {weightTotal.toFixed(0)}%
+            </span>
+          </div>
           <div className="weight-rows">
             {symbols.map((symbol) => (
-              <label key={symbol} className="weight-row">
-                <span>{symbol}</span>
+              <div key={symbol} className="weight-row">
+                <span className="weight-row-symbol">{symbol}</span>
                 <input
-                  type="number"
+                  type="range"
                   min="0"
+                  max="100"
                   step="1"
                   value={weights[symbol] ?? 0}
-                  onChange={(e) =>
-                    onWeightsChange({ ...weights, [symbol]: Number(e.target.value) })
-                  }
+                  onChange={(e) => setWeight(symbol, Number(e.target.value))}
+                  aria-label={`${symbol} weight percent`}
                 />
-              </label>
+                <span className="weight-row-value">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={weights[symbol] ?? 0}
+                    onChange={(e) => setWeight(symbol, Number(e.target.value))}
+                  />
+                  %
+                </span>
+              </div>
             ))}
           </div>
-          <span className={`weight-total ${Math.round(weightTotal) === 100 ? "positive" : "negative"}`}>
-            Total: {weightTotal.toFixed(0)}%
-          </span>
         </div>
       )}
     </div>

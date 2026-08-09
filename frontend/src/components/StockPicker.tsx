@@ -1,4 +1,4 @@
-import SymbolDatalist, { POPULAR_SYMBOLS_DATALIST_ID } from "./SymbolDatalist";
+import SymbolAutocomplete from "./SymbolAutocomplete";
 
 interface StockPickerProps {
   value: string;
@@ -9,13 +9,7 @@ export default function StockPicker({ value, onChange }: StockPickerProps) {
   return (
     <label>
       Stock symbol
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value.toUpperCase())}
-        placeholder="AAPL"
-        list={POPULAR_SYMBOLS_DATALIST_ID}
-      />
-      <SymbolDatalist />
+      <SymbolAutocomplete value={value} onChange={onChange} onSelect={onChange} placeholder="AAPL" />
     </label>
   );
 }

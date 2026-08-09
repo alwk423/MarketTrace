@@ -646,11 +646,19 @@ td.sell {
 .portfolio-weights {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  padding: 0.65rem 0.75rem;
+  gap: 0.6rem;
+  padding: 0.75rem 0.85rem;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--panel-sunken);
+  min-width: min(100%, 340px);
+}
+
+.portfolio-weights-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
 
 .portfolio-weights-label {
@@ -663,33 +671,120 @@ td.sell {
 
 .weight-rows {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 0.5rem;
 }
 
 .weight-row {
+  display: grid;
+  grid-template-columns: 3.5rem 1fr 4.2rem;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.weight-row-symbol {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.weight-row input[type="range"] {
+  width: 100%;
+  min-height: auto;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  accent-color: var(--accent-bright);
+}
+
+.weight-row-value {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  font-size: 0.8rem;
+  gap: 0.25rem;
+  font-size: 0.78rem;
   font-weight: 600;
   color: var(--muted);
 }
 
-.weight-row input {
-  min-height: 2rem;
-  width: 4rem;
-  padding: 0.3rem 0.5rem;
+.weight-row-value input {
+  min-height: 1.9rem;
+  width: 3rem;
+  padding: 0.25rem 0.4rem;
   border: 1px solid var(--border-strong);
   border-radius: 6px;
   background: var(--panel);
   color: var(--text);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .weight-total {
-  align-self: flex-start;
   font-size: 0.76rem;
   font-weight: 700;
+}
+
+.symbol-autocomplete {
+  position: relative;
+}
+
+.symbol-autocomplete-menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.3rem);
+  left: 0;
+  right: 0;
+  min-width: 22rem;
+  max-height: 20rem;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0.3rem;
+  list-style: none;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--panel-strong);
+  box-shadow: var(--shadow);
+}
+
+.symbol-autocomplete-option {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.symbol-autocomplete-option.highlighted,
+.symbol-autocomplete-option:hover {
+  background: var(--panel-sunken);
+}
+
+.symbol-autocomplete-symbol {
+  flex: none;
+  min-width: 3.2rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.symbol-autocomplete-name {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.symbol-autocomplete-status {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.72rem;
+  color: var(--muted);
 }
 
 .sortable-th {
