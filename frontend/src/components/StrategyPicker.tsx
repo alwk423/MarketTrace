@@ -20,9 +20,9 @@ export default function StrategyPicker({
       <label>
         Strategy
         <select
-          value={selected?.type ?? ""}
+          value={(selected?.id ?? selected?.type) ?? ""}
           onChange={(e) => {
-            const strategy = strategies.find((s) => s.type === e.target.value);
+            const strategy = strategies.find((s) => (s.id ?? s.type) === e.target.value);
             if (strategy) onSelect(strategy);
           }}
         >
@@ -30,14 +30,20 @@ export default function StrategyPicker({
             Select a strategy
           </option>
           {strategies.map((strategy) => (
-            <option key={strategy.type} value={strategy.type}>
+            <option key={strategy.id ?? strategy.type} value={strategy.id ?? strategy.type}>
               {strategy.label}
+              {strategy.is_custom ? " · Custom" : ""}
             </option>
           ))}
         </select>
       </label>
 
-      {selected && <p className="strategy-description">{selected.description}</p>}
+      {selected && (
+        <p className="strategy-description">
+          {selected.is_custom && <span className="panel-chip strategy-badge">Custom</span>}
+          {selected.description}
+        </p>
+      )}
 
       {selected?.parameters.map((param) => (
         <label key={param.name}>

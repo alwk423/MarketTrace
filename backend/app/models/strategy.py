@@ -12,6 +12,7 @@ from app.core.database import Base
 class StrategyType(str, enum.Enum):
     SMA_CROSSOVER = "sma_crossover"
     RSI = "rsi"
+    CUSTOM = "custom"
 
 
 class Strategy(Base):

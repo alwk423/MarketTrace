@@ -1,4 +1,4 @@
-export type StrategyType = "sma_crossover" | "rsi";
+export type StrategyType = "sma_crossover" | "rsi" | "custom";
 
 export interface StrategyParameter {
   name: string;
@@ -6,11 +6,38 @@ export interface StrategyParameter {
   default: number;
 }
 
+export type RuleIndicator = "sma" | "rsi" | "price";
+export type RuleOperator = "<" | "<=" | ">" | ">=" | "==" | "!=";
+
+export interface RuleCondition {
+  indicator: RuleIndicator;
+  period: number | null;
+  op: RuleOperator;
+  value: number;
+}
+
+export interface RuleGroup {
+  all: RuleCondition[];
+}
+
+export interface CustomStrategyRules {
+  buy: RuleGroup;
+  sell: RuleGroup;
+}
+
+export interface CustomStrategyCreateRequest {
+  name: string;
+  rules: CustomStrategyRules;
+}
+
 export interface StrategyCatalogEntry {
   type: StrategyType;
+  id?: string;
   label: string;
   description: string;
   parameters: StrategyParameter[];
+  is_custom?: boolean;
+  rules?: CustomStrategyRules;
 }
 
 export interface Trade {
@@ -59,7 +86,7 @@ export interface OptimizationResult {
 export interface OptimizationRequest {
   stock_symbol: string;
   strategy_type: StrategyType;
-  strategy_parameters: Record<string, number>;
+  strategy_parameters: Record<string, unknown>;
   start_date: string;
   end_date: string;
   initial_capital: number;
@@ -92,7 +119,7 @@ export interface SimulationResult {
 export interface SimulationRequest {
   stock_symbol: string;
   strategy_type: StrategyType;
-  strategy_parameters: Record<string, number>;
+  strategy_parameters: Record<string, unknown>;
   start_date: string;
   end_date: string;
   initial_capital: number;

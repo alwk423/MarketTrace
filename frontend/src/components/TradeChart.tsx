@@ -25,6 +25,14 @@ const INDICATOR_COLORS: Record<string, string> = {
   rsi: "#c084fc",
 };
 
+// Cycled through for indicator keys that aren't in the fixed map above -
+// e.g. rsi_14 / sma_20 from a custom strategy's rules.
+const FALLBACK_INDICATOR_COLORS = ["#c084fc", "#ffa63d", "#a78bfa", "#5eead4", "#f472b6"];
+
+function colorForIndicator(key: string, indexAmongUnknown: number): string {
+  return INDICATOR_COLORS[key] ?? FALLBACK_INDICATOR_COLORS[indexAmongUnknown % FALLBACK_INDICATOR_COLORS.length];
+}
+
 const CHART_GRID = "#232838";
 const CHART_AXIS_TICK = { fill: "#9aa3b2", fontSize: 12 };
 const CHART_TOOLTIP_STYLE = {
@@ -40,11 +48,19 @@ const INDICATOR_LABELS: Record<string, string> = {
   long_sma: "Long SMA",
 };
 
+// RSI-family series (the built-in "rsi" key, or "rsi_<period>" from a custom
+// strategy's rules) live on a 0-100 scale and get their own sub-chart rather
+// than sharing the price axis.
+function isOscillatorKey(key: string): boolean {
+  return key === "rsi" || key.startsWith("rsi_");
+}
+
 export default function TradeChart({ result, parameters }: TradeChartProps) {
   const indicators = result.indicators;
   const indicatorKeys = Object.keys(indicators);
-  const priceIndicatorKeys = indicatorKeys.filter((key) => key !== "rsi");
-  const hasRsi = indicatorKeys.includes("rsi");
+  const priceIndicatorKeys = indicatorKeys.filter((key) => !isOscillatorKey(key));
+  const oscillatorKeys = indicatorKeys.filter(isOscillatorKey);
+  const hasOscillator = oscillatorKeys.length > 0;
 
   const indicatorByDate: Record<string, Record<string, number | null>> = {};
   for (const key of indicatorKeys) {
@@ -76,10 +92,14 @@ export default function TradeChart({ result, parameters }: TradeChartProps) {
   const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
   const padding = Math.max((maxPrice - minPrice) * 0.08, 1);
 
-  const rsiData = hasRsi
+  const oscillatorData = hasOscillator
     ? result.equity_curve.map((point) => {
         const date = point.date.slice(0, 10);
-        return { date, rsi: indicatorByDate.rsi[date] ?? null };
+        const row: Record<string, number | string | null> = { date };
+        for (const key of oscillatorKeys) {
+          row[key] = indicatorByDate[key][date] ?? null;
+        }
+        return row;
       })
     : [];
 
@@ -113,12 +133,12 @@ export default function TradeChart({ result, parameters }: TradeChartProps) {
             dot={false}
             name="Buy & hold"
           />
-          {priceIndicatorKeys.map((key) => (
+          {priceIndicatorKeys.map((key, index) => (
             <Line
               key={key}
               type="monotone"
               dataKey={key}
-              stroke={INDICATOR_COLORS[key] ?? "#9aa3b2"}
+              stroke={colorForIndicator(key, index)}
               dot={false}
               name={INDICATOR_LABELS[key] ?? key}
             />
@@ -136,16 +156,32 @@ export default function TradeChart({ result, parameters }: TradeChartProps) {
         </LineChart>
       </ResponsiveContainer>
 
-      {hasRsi && (
+      {hasOscillator && (
         <ResponsiveContainer width="100%" height={160}>
-          <LineChart data={rsiData}>
+          <LineChart data={oscillatorData}>
             <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
             <XAxis dataKey="date" minTickGap={30} tick={CHART_AXIS_TICK} stroke={CHART_GRID} />
             <YAxis domain={[0, 100]} tick={CHART_AXIS_TICK} stroke={CHART_GRID} />
             <Tooltip contentStyle={CHART_TOOLTIP_STYLE} labelStyle={{ color: "#9aa3b2" }} />
-            <ReferenceLine y={parameters?.oversold ?? 30} stroke="#1fd68f" strokeDasharray="3 3" />
-            <ReferenceLine y={parameters?.overbought ?? 70} stroke="#ff4d6a" strokeDasharray="3 3" />
-            <Line type="monotone" dataKey="rsi" stroke={INDICATOR_COLORS.rsi} dot={false} name="RSI" />
+            {/* Fixed 30/70 guide lines only line up with the built-in RSI
+                strategy's own thresholds - a custom strategy's rsi condition
+                can use any value, so skip these outside that case. */}
+            {indicatorKeys.includes("rsi") && (
+              <>
+                <ReferenceLine y={parameters?.oversold ?? 30} stroke="#1fd68f" strokeDasharray="3 3" />
+                <ReferenceLine y={parameters?.overbought ?? 70} stroke="#ff4d6a" strokeDasharray="3 3" />
+              </>
+            )}
+            {oscillatorKeys.map((key, index) => (
+              <Line
+                key={key}
+                type="monotone"
+                dataKey={key}
+                stroke={colorForIndicator(key, index)}
+                dot={false}
+                name={key === "rsi" ? "RSI" : key}
+              />
+            ))}
           </LineChart>
         </ResponsiveContainer>
       )}
