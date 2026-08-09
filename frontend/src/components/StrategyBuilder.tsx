@@ -172,7 +172,7 @@ export default function StrategyBuilder({ onSaved }: StrategyBuilderProps) {
     <details className="strategy-builder">
       <summary>Build a custom strategy</summary>
       <div className="strategy-builder-body">
-        <label>
+        <label className="strategy-builder-name">
           Name
           <input
             type="text"
@@ -182,18 +182,20 @@ export default function StrategyBuilder({ onSaved }: StrategyBuilderProps) {
           />
         </label>
 
-        <ConditionGroupEditor
-          title="Buy when"
-          actionLabel="Buy"
-          conditions={buyConditions}
-          onChange={setBuyConditions}
-        />
-        <ConditionGroupEditor
-          title="Sell when"
-          actionLabel="Sell"
-          conditions={sellConditions}
-          onChange={setSellConditions}
-        />
+        <div className="strategy-builder-groups">
+          <ConditionGroupEditor
+            title="Buy when"
+            actionLabel="Buy"
+            conditions={buyConditions}
+            onChange={setBuyConditions}
+          />
+          <ConditionGroupEditor
+            title="Sell when"
+            actionLabel="Sell"
+            conditions={sellConditions}
+            onChange={setSellConditions}
+          />
+        </div>
 
         {error && <p className="error">{error}</p>}
 

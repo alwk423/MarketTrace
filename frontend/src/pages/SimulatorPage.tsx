@@ -195,8 +195,6 @@ export default function SimulatorPage() {
           onParametersChange={setParameters}
         />
 
-        <StrategyBuilder onSaved={handleCustomStrategySaved} />
-
         <details className="advanced-settings">
           <summary>Advanced settings</summary>
           <div className="advanced-settings-grid">
@@ -249,6 +247,12 @@ export default function SimulatorPage() {
           </button>
         </div>
       </section>
+
+      {/* Its own full-width panel rather than a flex item alongside the form
+          inputs above - once open it's a lot taller/wider than a numeric
+          field, so it needs room to lay out the buy/sell groups side by side
+          instead of fighting the controls row for space. */}
+      <StrategyBuilder onSaved={handleCustomStrategySaved} />
 
       {/* {expr && <jsx/>} is the common "render only if truthy" idiom:
           nothing shows until there's an error / a result to display. */}
