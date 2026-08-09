@@ -58,12 +58,65 @@ select {
 
 .controls {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 1rem;
-  align-items: flex-end;
   margin-bottom: 1.5rem;
   padding-bottom: 1.5rem;
   border-bottom: 1px solid var(--border);
+}
+
+/* Every direct child of .controls (the symbol card, the backtest-window /
+   strategy card pair) is its own bounded box - see .control-card below -
+   rather than labels sitting directly on the page background. Bounded boxes
+   of differing height read as a dashboard of independently-sized widgets;
+   unbounded ones at differing heights just read as misaligned. */
+.control-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel-strong);
+}
+
+.control-card-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+/* Backtest-window card (left) and strategy card (right). The strategy card
+   is usually taller - it carries its own parameter fields on top of the
+   picker - but since both are self-contained cards that's expected, not a
+   misalignment to fix. */
+.controls-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(320px, 1.5fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.controls-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+/* Nested one level inside a .control-card, .advanced-settings doesn't need
+   its own border/background too - that reads as a box-in-a-box. Its parent
+   card's border is the only boundary this needs. */
+.control-card .advanced-settings {
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.control-card .advanced-settings[open] {
+  padding: 0;
 }
 
 .controls label {
@@ -580,11 +633,16 @@ td.sell {
   font-weight: 600;
 }
 
+.symbol-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
 .mode-toggle {
   flex-direction: row !important;
   align-items: center;
   gap: 0.5rem !important;
-  min-height: 2.5rem;
 }
 
 .mode-toggle input[type="checkbox"] {
@@ -652,6 +710,11 @@ td.sell {
   border-radius: 8px;
   background: var(--panel-sunken);
   min-width: min(100%, 340px);
+  /* Left uncapped, a slider track stretches to the full row width regardless
+     of how many symbols are in the basket, which reads as oversized for a
+     2-3 stock basket - cap it at a size that still gives comfortable drag
+     precision without dominating the row. */
+  max-width: 34rem;
 }
 
 .portfolio-weights-header {
@@ -824,6 +887,10 @@ td.sell {
 
   .heatmap-grid {
     --heatmap-label-width: 72px;
+  }
+
+  .controls-grid {
+    grid-template-columns: 1fr;
   }
 }
 

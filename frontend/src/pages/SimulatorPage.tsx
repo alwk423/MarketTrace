@@ -226,123 +226,146 @@ export default function SimulatorPage() {
       <h1>MarketTrace</h1>
 
       <section className="controls">
-        <label className="mode-toggle">
-          <input
-            type="checkbox"
-            checked={portfolioMode}
-            onChange={(e) => setPortfolioMode(e.target.checked)}
-          />
-          Portfolio mode
-        </label>
-
-        {/* Controlled component pattern: parent passes down the current
-            value + an onChange callback; the child calls that callback
-            (e.g. setSymbol) whenever the user types, which updates state
-            here and flows the new value back down as a prop. Portfolio mode
-            swaps the single-symbol field for a multi-symbol tag input. */}
-        {portfolioMode ? (
-          <PortfolioSymbolInput
-            symbols={portfolioSymbols}
-            weights={portfolioWeights}
-            onSymbolsChange={handlePortfolioSymbolsChange}
-            onWeightsChange={setPortfolioWeights}
-          />
-        ) : (
-          <StockPicker value={symbol} onChange={setSymbol} />
-        )}
-
-        <label>
-          Start date
-          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-        </label>
-
-        <label>
-          End date
-          <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-        </label>
-
-        <label>
-          Initial capital
-          <input
-            type="number"
-            value={initialCapital}
-            onChange={(e) => setInitialCapital(Number(e.target.value))}
-          />
-        </label>
-
-        <StrategyPicker
-          strategies={strategies}
-          selected={selectedStrategy}
-          parameters={parameters}
-          onSelect={handleSelectStrategy}
-          onParametersChange={setParameters}
-        />
-
-        <details className="advanced-settings">
-          <summary>Advanced settings</summary>
-          <div className="advanced-settings-grid">
-            <label>
-              Fee (%)
+        {/* Every logical group below gets its own bordered .control-card
+            instead of floating labels directly on the page background -
+            bounded cards of differing height read as a normal dashboard of
+            widgets sized to their own content; unbounded labels at differing
+            heights just read as misaligned. */}
+        <div className="control-card">
+          <div className="symbol-section">
+            <label className="mode-toggle">
               <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={feePct}
-                onChange={(e) => setFeePct(Number(e.target.value))}
+                type="checkbox"
+                checked={portfolioMode}
+                onChange={(e) => setPortfolioMode(e.target.checked)}
               />
+              Portfolio mode
             </label>
-            <label>
-              Slippage (%)
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={slippagePct}
-                onChange={(e) => setSlippagePct(Number(e.target.value))}
+
+            {/* Controlled component pattern: parent passes down the current
+                value + an onChange callback; the child calls that callback
+                (e.g. setSymbol) whenever the user types, which updates state
+                here and flows the new value back down as a prop. Portfolio
+                mode swaps the single-symbol field for a multi-symbol tag
+                input. */}
+            {portfolioMode ? (
+              <PortfolioSymbolInput
+                symbols={portfolioSymbols}
+                weights={portfolioWeights}
+                onSymbolsChange={handlePortfolioSymbolsChange}
+                onWeightsChange={setPortfolioWeights}
               />
-            </label>
-            <label>
-              Position size (%)
-              <input
-                type="number"
-                step="1"
-                min="0"
-                max="100"
-                value={positionSizePct}
-                onChange={(e) => setPositionSizePct(Number(e.target.value))}
-              />
-            </label>
+            ) : (
+              <StockPicker value={symbol} onChange={setSymbol} />
+            )}
           </div>
-        </details>
+        </div>
 
-        {/* Disabled while a request is in flight, before any strategy has
-            loaded/been picked, or (portfolio mode) before any symbol has
-            been added; label swaps to a loading state too. */}
-        <div className="action-row">
-          <button
-            onClick={handleRun}
-            disabled={
-              loading ||
-              portfolioLoading ||
-              !selectedStrategy ||
-              (portfolioMode && portfolioSymbols.length === 0)
-            }
-          >
-            {loading || portfolioLoading ? "Running..." : "Run simulation"}
-          </button>
-          <button
-            onClick={handleOptimize}
-            disabled={
-              optimizing ||
-              !selectedStrategy ||
-              selectedStrategy.type !== "sma_crossover" ||
-              portfolioMode
-            }
-            className="secondary-button"
-            title={portfolioMode ? "Parameter optimization runs against a single symbol" : undefined}
-          >
-            {optimizing ? "Scanning grid..." : "Optimize parameters"}
-          </button>
+        {/* Two cards side by side rather than one long wrapping row - the
+            strategy card usually runs taller (it carries its own parameter
+            fields), and since each is its own bounded box that's expected
+            instead of looking like broken alignment. */}
+        <div className="controls-grid">
+          <div className="control-card">
+            <span className="control-card-title">Backtest window</span>
+            <div className="controls-row">
+              <label>
+                Start date
+                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              </label>
+
+              <label>
+                End date
+                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+              </label>
+
+              <label>
+                Initial capital
+                <input
+                  type="number"
+                  value={initialCapital}
+                  onChange={(e) => setInitialCapital(Number(e.target.value))}
+                />
+              </label>
+            </div>
+
+            {/* Disabled while a request is in flight, before any strategy has
+                loaded/been picked, or (portfolio mode) before any symbol has
+                been added; label swaps to a loading state too. */}
+            <div className="action-row">
+              <button
+                onClick={handleRun}
+                disabled={
+                  loading ||
+                  portfolioLoading ||
+                  !selectedStrategy ||
+                  (portfolioMode && portfolioSymbols.length === 0)
+                }
+              >
+                {loading || portfolioLoading ? "Running..." : "Run simulation"}
+              </button>
+              <button
+                onClick={handleOptimize}
+                disabled={
+                  optimizing ||
+                  !selectedStrategy ||
+                  selectedStrategy.type !== "sma_crossover" ||
+                  portfolioMode
+                }
+                className="secondary-button"
+                title={portfolioMode ? "Parameter optimization runs against a single symbol" : undefined}
+              >
+                {optimizing ? "Scanning grid..." : "Optimize parameters"}
+              </button>
+            </div>
+          </div>
+
+          <div className="control-card">
+            <StrategyPicker
+              strategies={strategies}
+              selected={selectedStrategy}
+              parameters={parameters}
+              onSelect={handleSelectStrategy}
+              onParametersChange={setParameters}
+            />
+
+            <details className="advanced-settings">
+              <summary>Advanced settings</summary>
+              <div className="advanced-settings-grid">
+                <label>
+                  Fee (%)
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={feePct}
+                    onChange={(e) => setFeePct(Number(e.target.value))}
+                  />
+                </label>
+                <label>
+                  Slippage (%)
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={slippagePct}
+                    onChange={(e) => setSlippagePct(Number(e.target.value))}
+                  />
+                </label>
+                <label>
+                  Position size (%)
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    max="100"
+                    value={positionSizePct}
+                    onChange={(e) => setPositionSizePct(Number(e.target.value))}
+                  />
+                </label>
+              </div>
+            </details>
+          </div>
         </div>
       </section>
 
