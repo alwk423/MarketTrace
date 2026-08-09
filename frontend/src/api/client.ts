@@ -1,5 +1,11 @@
 import axios from "axios";
-import type { SimulationRequest, SimulationResult, StrategyCatalogEntry } from "../types";
+import type {
+  OptimizationRequest,
+  OptimizationResult,
+  SimulationRequest,
+  SimulationResult,
+  StrategyCatalogEntry,
+} from "../types";
 
 // Preconfigured HTTP client: every request sent through `client` gets this
 // baseURL prepended to its URL. In dev, VITE_API_BASE_URL is unset, so this
@@ -20,5 +26,10 @@ export async function fetchStrategies(): Promise<StrategyCatalogEntry[]> {
 // runs the backtest and sends back the trade log / stats as SimulationResult.
 export async function runSimulation(payload: SimulationRequest): Promise<SimulationResult> {
   const { data } = await client.post<SimulationResult>("/simulations", payload);
+  return data;
+}
+
+export async function optimizeSimulation(payload: OptimizationRequest): Promise<OptimizationResult> {
+  const { data } = await client.post<OptimizationResult>("/simulations/optimize", payload);
   return data;
 }

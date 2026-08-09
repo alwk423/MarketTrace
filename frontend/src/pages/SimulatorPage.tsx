@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { fetchStrategies } from "../api/client";
 import ResultsPanel from "../components/ResultsPanel";
+import OptimizationHeatmap from "../components/OptimizationHeatmap";
 import StockPicker from "../components/StockPicker";
 import StrategyPicker from "../components/StrategyPicker";
 import TradeChart from "../components/TradeChart";
@@ -9,6 +10,20 @@ import type { StrategyCatalogEntry } from "../types";
 
 const today = new Date().toISOString().slice(0, 10);
 const oneYearAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+function buildOptimizationGrid(parameters: Record<string, number>) {
+  const shortWindow = Math.max(2, Math.round(parameters.short_window ?? 20));
+  const longWindow = Math.max(shortWindow + 5, Math.round(parameters.long_window ?? 50));
+
+  const shortWindows = [...new Set([shortWindow - 10, shortWindow - 5, shortWindow, shortWindow + 5, shortWindow + 10])]
+    .filter((value) => value > 1)
+    .sort((a, b) => a - b);
+  const longWindows = [...new Set([longWindow - 20, longWindow - 10, longWindow, longWindow + 10, longWindow + 20])]
+    .filter((value) => value > 1)
+    .sort((a, b) => a - b);
+
+  return { shortWindows, longWindows };
+}
 
 export default function SimulatorPage() {
   // Each useState below is one piece of form state: [currentValue, setterFn].
@@ -28,7 +43,16 @@ export default function SimulatorPage() {
   // Backend-call state (the last result, whether a request is in flight, any
   // error, and the function to trigger a new call) lives in this hook instead
   // of being duplicated here — see hooks/useSimulation.ts.
-  const { result, loading, error, run } = useSimulation();
+  const {
+    result,
+    loading,
+    error,
+    run,
+    optimization,
+    optimizing,
+    optimizationError,
+    runOptimization,
+  } = useSimulation();
 
   // useEffect(fn, []) runs `fn` exactly once, right after first render.
   // Here: load the strategy catalog from the backend and auto-select the
@@ -49,6 +73,46 @@ export default function SimulatorPage() {
   function handleSelectStrategy(strategy: StrategyCatalogEntry) {
     setSelectedStrategy(strategy);
     setParameters(Object.fromEntries(strategy.parameters.map((p) => [p.name, p.default])));
+  }
+
+  function handleOptimize() {
+    if (!selectedStrategy || selectedStrategy.type !== "sma_crossover") return;
+
+    const { shortWindows, longWindows } = buildOptimizationGrid(parameters);
+    runOptimization({
+      stock_symbol: symbol,
+      strategy_type: selectedStrategy.type,
+      strategy_parameters: parameters,
+      start_date: startDate,
+      end_date: endDate,
+      initial_capital: initialCapital,
+      fee_pct: feePct,
+      slippage_pct: slippagePct,
+      position_size_pct: positionSizePct,
+      short_windows: shortWindows,
+      long_windows: longWindows,
+    });
+  }
+
+  function handleSelectOptimizationPoint(point: { short_window: number; long_window: number }) {
+    if (!selectedStrategy) return;
+
+    const nextParameters = {
+      ...parameters,
+      ...point,
+    };
+    setParameters(nextParameters);
+    run({
+      stock_symbol: symbol,
+      strategy_type: selectedStrategy.type,
+      strategy_parameters: nextParameters,
+      start_date: startDate,
+      end_date: endDate,
+      initial_capital: initialCapital,
+      fee_pct: feePct,
+      slippage_pct: slippagePct,
+      position_size_pct: positionSizePct,
+    });
   }
 
   // Called when the "Run simulation" button is clicked. Bundles up all the
@@ -146,18 +210,43 @@ export default function SimulatorPage() {
 
         {/* Disabled while a request is in flight or before any strategy has
             loaded/been picked; label swaps to a loading state too. */}
-        <button onClick={handleRun} disabled={loading || !selectedStrategy}>
-          {loading ? "Running..." : "Run simulation"}
-        </button>
+        <div className="action-row">
+          <button onClick={handleRun} disabled={loading || !selectedStrategy}>
+            {loading ? "Running..." : "Run simulation"}
+          </button>
+          <button
+            onClick={handleOptimize}
+            disabled={optimizing || !selectedStrategy || selectedStrategy.type !== "sma_crossover"}
+            className="secondary-button"
+          >
+            {optimizing ? "Scanning grid..." : "Optimize parameters"}
+          </button>
+        </div>
       </section>
 
       {/* {expr && <jsx/>} is the common "render only if truthy" idiom:
           nothing shows until there's an error / a result to display. */}
       {error && <p className="error">{error}</p>}
+      {optimizationError && <p className="error">{optimizationError}</p>}
+
+      {optimization && selectedStrategy?.type === "sma_crossover" && (
+        <OptimizationHeatmap
+          points={optimization.results}
+          selectedParameters={
+            "short_window" in parameters && "long_window" in parameters
+              ? {
+                  short_window: Math.round(parameters.short_window ?? 0),
+                  long_window: Math.round(parameters.long_window ?? 0),
+                }
+              : null
+          }
+          onSelect={handleSelectOptimizationPoint}
+        />
+      )}
 
       {result && (
         <section className="results">
-          <TradeChart result={result} />
+          <TradeChart result={result} parameters={parameters} />
           <ResultsPanel result={result} />
         </section>
       )}

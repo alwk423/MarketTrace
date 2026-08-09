@@ -1,16 +1,59 @@
 :root {
-  color-scheme: light dark;
-  font-family: system-ui, sans-serif;
+  color-scheme: dark;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
+  --bg: #0a0e14;
+  --panel: #12161f;
+  --panel-strong: #161b26;
+  --panel-sunken: #0d1119;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --text: #e8eaed;
+  --muted: #9aa3b2;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px rgba(0, 0, 0, 0.45);
+  --accent: #2568d6;
+  --accent-strong: #1f56b8;
+  --accent-bright: #3d8bff;
+  --green: #1fd68f;
+  --red: #ff4d6a;
+  --heat-neutral: #333a47;
+  --heat-red: #c81e3a;
+  --heat-green: #0c7a4e;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
+  min-height: 100vh;
   padding: 2rem;
+  color: var(--text);
+  background: var(--bg);
+}
+
+button,
+input,
+select {
+  font: inherit;
 }
 
 .simulator {
-  max-width: 960px;
+  max-width: 1200px;
   margin: 0 auto;
+  padding: 1.75rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.simulator h1 {
+  margin: 0 0 1.5rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .controls {
@@ -18,47 +61,251 @@ body {
   flex-wrap: wrap;
   gap: 1rem;
   align-items: flex-end;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
 }
 
 .controls label {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.85rem;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.controls input,
+.controls select,
+.advanced-settings input {
+  min-height: 2.5rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--panel-sunken);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.controls input:focus,
+.controls select:focus,
+.advanced-settings input:focus {
+  outline: none;
+  border-color: var(--accent-bright);
+  box-shadow: 0 0 0 3px rgba(61, 139, 255, 0.25);
 }
 
 .strategy-picker {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  min-width: min(100%, 280px);
 }
 
 .strategy-description {
   max-width: 24rem;
   font-size: 0.8rem;
-  opacity: 0.75;
+  color: var(--muted);
 }
 
 button {
-  padding: 0.5rem 1.25rem;
+  padding: 0.7rem 1.1rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--accent);
+  color: white;
+  font-weight: 600;
+  font-size: 0.88rem;
   cursor: pointer;
+  transition: background 120ms ease, opacity 120ms ease;
+}
+
+button:hover:not(:disabled) {
+  background: var(--accent-strong);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.secondary-button {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+.secondary-button:hover:not(:disabled) {
+  background: var(--panel-sunken);
+}
+
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
 .error {
-  color: #dc2626;
+  color: var(--red);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.optimization-panel,
+.results-panel,
+.advanced-settings {
+  margin-top: 1.25rem;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel-strong);
+}
+
+.panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.1rem;
+}
+
+.panel-header h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.panel-header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.panel-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.8rem;
+  padding: 0 0.65rem;
+  border-radius: 999px;
+  background: var(--panel-sunken);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.heatmap-grid {
+  display: grid;
+  gap: 0.4rem;
+  grid-template-columns: var(--heatmap-label-width, 92px) repeat(var(--heatmap-columns, 5), minmax(0, 1fr));
+}
+
+.heatmap-corner,
+.heatmap-axis {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.6rem;
+  border-radius: 6px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.heatmap-corner {
+  justify-content: flex-start;
+  padding-left: 0.7rem;
+  background: var(--panel-sunken);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.heatmap-axis.top {
+  background: var(--panel-sunken);
+}
+
+.heatmap-axis.left {
+  background: var(--panel-sunken);
+  grid-column: 1;
+}
+
+.heatmap-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  min-height: 4.5rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  color: white;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+
+.heatmap-cell strong {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.heatmap-cell span {
+  font-size: 0.74rem;
+  opacity: 0.85;
+}
+
+.heatmap-cell.selected {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+.heatmap-cell.empty {
+  background: var(--panel-sunken);
+  border-style: dashed;
+  border-color: var(--border);
+}
+
+.heatmap-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 1.1rem;
+}
+
+.heatmap-legend-bar {
+  height: 0.45rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--heat-red), var(--heat-neutral), var(--heat-green));
+  border: 1px solid var(--border);
+}
+
+.heatmap-legend-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.results {
+  display: grid;
+  gap: 1.25rem;
+  margin-top: 1.5rem;
 }
 
 .metrics {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem 2rem;
+  gap: 1.25rem 2rem;
   margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
 }
 
 .metrics > div {
   display: flex;
   flex-direction: column;
+  gap: 0.2rem;
   min-width: 10rem;
 }
 
@@ -66,14 +313,13 @@ button {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  border: 1px solid rgba(128, 128, 128, 0.25);
-  border-radius: 0.5rem;
 }
 
 .advanced-settings summary {
   cursor: pointer;
   font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--muted);
 }
 
 .advanced-settings-grid {
@@ -86,30 +332,122 @@ button {
   min-width: 8rem;
 }
 
+.regime-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.regime-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1rem;
+  border-radius: 10px;
+  background: var(--panel-sunken);
+  border: 1px solid var(--border);
+}
+
+.regime-card span,
+.metrics span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.regime-card strong,
+.metrics strong {
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.regime-card.bull {
+  box-shadow: inset 0 0 0 1px rgba(31, 214, 143, 0.35);
+}
+
+.regime-card.bear {
+  box-shadow: inset 0 0 0 1px rgba(255, 77, 106, 0.35);
+}
+
 .positive {
-  color: #16a34a;
+  color: var(--green);
 }
 
 .negative {
-  color: #dc2626;
+  color: var(--red);
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
+  overflow: hidden;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  font-variant-numeric: tabular-nums;
 }
 
 th,
 td {
   text-align: left;
-  padding: 0.4rem 0.6rem;
-  border-bottom: 1px solid rgba(128, 128, 128, 0.25);
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.86rem;
+}
+
+th {
+  background: var(--panel-sunken);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
 }
 
 td.buy {
-  color: #16a34a;
+  color: var(--green);
+  font-weight: 600;
 }
 
 td.sell {
-  color: #dc2626;
+  color: var(--red);
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  body {
+    padding: 1rem;
+  }
+
+  .simulator {
+    padding: 1rem;
+  }
+
+  .heatmap-grid {
+    --heatmap-label-width: 72px;
+  }
+}
+
+@media (max-width: 700px) {
+  .regime-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .heatmap-grid {
+    gap: 0.3rem;
+    --heatmap-label-width: 58px;
+  }
+
+  .heatmap-cell {
+    min-height: 4rem;
+    padding: 0.5rem;
+  }
 }
