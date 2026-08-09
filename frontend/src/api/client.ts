@@ -1,5 +1,6 @@
 import axios from "axios";
 import type {
+  CustomStrategyCreateRequest,
   OptimizationRequest,
   OptimizationResult,
   SimulationRequest,
@@ -31,5 +32,15 @@ export async function runSimulation(payload: SimulationRequest): Promise<Simulat
 
 export async function optimizeSimulation(payload: OptimizationRequest): Promise<OptimizationResult> {
   const { data } = await client.post<OptimizationResult>("/simulations/optimize", payload);
+  return data;
+}
+
+// POST /api/strategies/custom -> saves a user-built rule set and returns it
+// already shaped as a StrategyCatalogEntry, so it can be appended straight
+// into the picker's strategy list.
+export async function saveCustomStrategy(
+  payload: CustomStrategyCreateRequest,
+): Promise<StrategyCatalogEntry> {
+  const { data } = await client.post<StrategyCatalogEntry>("/strategies/custom", payload);
   return data;
 }

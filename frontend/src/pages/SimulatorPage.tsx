@@ -3,10 +3,11 @@ import { fetchStrategies } from "../api/client";
 import ResultsPanel from "../components/ResultsPanel";
 import OptimizationHeatmap from "../components/OptimizationHeatmap";
 import StockPicker from "../components/StockPicker";
+import StrategyBuilder from "../components/StrategyBuilder";
 import StrategyPicker from "../components/StrategyPicker";
 import TradeChart from "../components/TradeChart";
 import { useSimulation } from "../hooks/useSimulation";
-import type { StrategyCatalogEntry } from "../types";
+import type { CustomStrategyRules, StrategyCatalogEntry } from "../types";
 
 const today = new Date().toISOString().slice(0, 10);
 const oneYearAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -33,6 +34,10 @@ export default function SimulatorPage() {
   const [symbol, setSymbol] = useState("AAPL");
   const [selectedStrategy, setSelectedStrategy] = useState<StrategyCatalogEntry | null>(null);
   const [parameters, setParameters] = useState<Record<string, number>>({});
+  // Rules for the currently selected custom strategy (null for built-ins).
+  // Kept separate from `parameters` since rules are a nested condition tree,
+  // not the flat numeric knobs SMA/RSI use.
+  const [customRules, setCustomRules] = useState<CustomStrategyRules | null>(null);
   const [startDate, setStartDate] = useState(oneYearAgo);
   const [endDate, setEndDate] = useState(today);
   const [initialCapital, setInitialCapital] = useState(10_000);
@@ -69,10 +74,29 @@ export default function SimulatorPage() {
   }, []);
 
   // Called by StrategyPicker when the user picks a different strategy from
-  // its dropdown. Resets the parameter values to that strategy's defaults.
+  // its dropdown. Resets the parameter values to that strategy's defaults
+  // (or its saved rules, for a custom strategy).
   function handleSelectStrategy(strategy: StrategyCatalogEntry) {
     setSelectedStrategy(strategy);
     setParameters(Object.fromEntries(strategy.parameters.map((p) => [p.name, p.default])));
+    setCustomRules(strategy.is_custom ? (strategy.rules ?? null) : null);
+  }
+
+  // Called by StrategyBuilder once a custom strategy has been saved to the
+  // backend. Drops it into the picker's list, right alongside SMA/RSI, and
+  // selects it so it's ready to run immediately.
+  function handleCustomStrategySaved(entry: StrategyCatalogEntry) {
+    setStrategies((current) => [...current, entry]);
+    handleSelectStrategy(entry);
+  }
+
+  // Custom strategies carry their rules as a nested object rather than the
+  // flat numeric `parameters` built-ins use.
+  function currentStrategyParameters(): Record<string, unknown> {
+    if (selectedStrategy?.type === "custom") {
+      return { rules: customRules };
+    }
+    return parameters;
   }
 
   function handleOptimize() {
@@ -123,7 +147,7 @@ export default function SimulatorPage() {
     run({
       stock_symbol: symbol,
       strategy_type: selectedStrategy.type,
-      strategy_parameters: parameters,
+      strategy_parameters: currentStrategyParameters(),
       start_date: startDate,
       end_date: endDate,
       initial_capital: initialCapital,
@@ -170,6 +194,8 @@ export default function SimulatorPage() {
           onSelect={handleSelectStrategy}
           onParametersChange={setParameters}
         />
+
+        <StrategyBuilder onSaved={handleCustomStrategySaved} />
 
         <details className="advanced-settings">
           <summary>Advanced settings</summary>

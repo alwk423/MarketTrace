@@ -7,12 +7,14 @@ from pandas import isna
 from app.models.strategy import StrategyType
 from app.services.market_data import get_price_history
 from app.services.strategies.base import Strategy
+from app.services.strategies.custom import CustomStrategy
 from app.services.strategies.rsi import RsiStrategy
 from app.services.strategies.sma_crossover import SmaCrossoverStrategy
 
 STRATEGY_REGISTRY: dict[StrategyType, type[Strategy]] = {
     StrategyType.SMA_CROSSOVER: SmaCrossoverStrategy,
     StrategyType.RSI: RsiStrategy,
+    StrategyType.CUSTOM: CustomStrategy,
 }
 
 

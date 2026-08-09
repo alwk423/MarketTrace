@@ -1,5 +1,6 @@
 import pandas as pd
 
+from app.services.indicators import rsi as compute_rsi
 from app.services.strategies.base import Strategy
 
 
@@ -12,22 +13,8 @@ class RsiStrategy(Strategy):
         self.oversold = oversold
         self.overbought = overbought
 
-    def _rsi(self, close: pd.Series) -> pd.Series:
-        # RSI (Relative Strength Index): a 0-100 score for "how one-sided has price
-        # movement been lately." Near 100 = almost all recent days were gains
-        # ("overbought"). Near 0 = almost all recent days were losses ("oversold").
-        delta = close.diff()  # today's price minus yesterday's, for every day
-        # Keep only the up-days (clip everything below 0 up to 0), then average
-        # over the last `period` days -> "how big have the recent gains been."
-        gain = delta.clip(lower=0).rolling(self.period).mean()
-        # Keep only the down-days (clip everything above 0 down to 0), flip the
-        # sign so it's a positive number -> "how big have the recent losses been."
-        loss = (-delta.clip(upper=0)).rolling(self.period).mean()
-        rs = gain / loss.replace(0, float("nan"))  # avg gain vs avg loss ratio
-        return 100 - (100 / (1 + rs))  # squash that ratio onto the 0-100 RSI scale
-
     def generate_signals(self, prices: pd.DataFrame) -> pd.Series:
-        rsi = self._rsi(prices["close"])
+        rsi = compute_rsi(prices, self.period)
 
         signals = pd.Series(0, index=prices.index)  # default: hold, every day
         # Just dropped below the oversold line (e.g. 30): price has been falling a
@@ -39,5 +26,4 @@ class RsiStrategy(Strategy):
         return signals
 
     def compute_indicators(self, prices: pd.DataFrame) -> dict:
-        rsi = self._rsi(prices["close"])
-        return {"rsi": rsi}
+        return {"rsi": compute_rsi(prices, self.period)}

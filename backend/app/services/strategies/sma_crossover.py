@@ -1,5 +1,6 @@
 import pandas as pd
 
+from app.services.indicators import sma
 from app.services.strategies.base import Strategy
 
 
@@ -12,11 +13,10 @@ class SmaCrossoverStrategy(Strategy):
         self.long_window = long_window
 
     def generate_signals(self, prices: pd.DataFrame) -> pd.Series:
-        close = prices["close"]
         # Fast-reacting average: mean of the last `short_window` closes, recomputed each day.
-        short_sma = close.rolling(self.short_window).mean()
+        short_sma = sma(prices, self.short_window)
         # Slow-reacting average: same idea, over a longer lookback.
-        long_sma = close.rolling(self.long_window).mean()
+        long_sma = sma(prices, self.long_window)
 
         # True/False per day: is the fast average currently above the slow one?
         # (NaN comparisons - during the first few days with no full window yet - are always False.)
@@ -33,7 +33,7 @@ class SmaCrossoverStrategy(Strategy):
         return signals
 
     def compute_indicators(self, prices: pd.DataFrame) -> dict:
-        close = prices["close"]
-        short_sma = close.rolling(self.short_window).mean()
-        long_sma = close.rolling(self.long_window).mean()
-        return {"short_sma": short_sma, "long_sma": long_sma}
+        return {
+            "short_sma": sma(prices, self.short_window),
+            "long_sma": sma(prices, self.long_window),
+        }
