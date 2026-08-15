@@ -112,6 +112,8 @@ export interface OptimizationRequest {
 export interface SimulationResult {
   id: string;
   stock_symbol: string;
+  strategy_type: StrategyType | null;
+  strategy_name: string | null;
   start_date: string;
   end_date: string;
   initial_capital: number;
@@ -126,6 +128,7 @@ export interface SimulationResult {
   buy_and_hold_equity_curve: EquityPoint[];
   buy_and_hold_return_pct: number | null;
   indicators: Record<string, IndicatorPoint[]>;
+  is_public: boolean;
 }
 
 export interface SimulationRequest {
@@ -240,6 +243,7 @@ export interface SimulationSummary {
   final_capital: number;
   total_return_pct: number;
   created_at: string;
+  is_public: boolean;
 }
 
 export interface MonteCarloResult {

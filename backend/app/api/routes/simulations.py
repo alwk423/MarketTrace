@@ -21,6 +21,7 @@ from app.schemas.simulation import (
     RegimeSplit,
     SimulationRequest,
     SimulationResult,
+    SimulationShareUpdate,
     SimulationSummary,
 )
 from app.services.backtester import (
@@ -89,14 +90,14 @@ def create_simulation(
     for trade in result["trades"]:
         db.add(Trade(simulation_id=simulation.id, **trade))
 
-    db.commit()  # writes all of the above to Postgres in one transaction
-
     # This is the JSON object that becomes the HTTP response body — it's what
     # arrives back at the frontend as `data` in runSimulation(), and ends up
     # as the `result` state that SimulatorPage.tsx renders.
-    return SimulationResult(
+    simulation_result = SimulationResult(
         id=simulation.id,
         stock_symbol=simulation.stock_symbol,
+        strategy_type=strategy_record.type,
+        strategy_name=strategy_record.name,
         start_date=payload.start_date,
         end_date=payload.end_date,
         initial_capital=simulation.initial_capital,
@@ -115,6 +116,28 @@ def create_simulation(
         buy_and_hold_return_pct=result["buy_and_hold_return_pct"],
         indicators=result["indicators"],
     )
+
+    # Everything above except `trades` (already its own rows) isn't stored
+    # anywhere else - snapshot it now so this run's report (private detail
+    # view, or a public share link) can be re-rendered later without
+    # re-running the backtest against live market data.
+    simulation.report_data = simulation_result.model_dump(
+        mode="json",
+        include={
+            "sharpe",
+            "return_before_costs_pct",
+            "regime_split",
+            "regime_periods",
+            "equity_curve",
+            "buy_and_hold_equity_curve",
+            "buy_and_hold_return_pct",
+            "indicators",
+        },
+    )
+
+    db.commit()  # writes all of the above to Postgres in one transaction
+
+    return simulation_result
 
 
 @router.post("/optimize", response_model=OptimizationResult)
@@ -243,9 +266,51 @@ def list_simulations(db: Session = Depends(get_db), current_user: User = Depends
             final_capital=simulation.final_capital,
             total_return_pct=simulation.total_return_pct,
             created_at=simulation.created_at,
+            is_public=simulation.is_public,
         )
         for simulation, strategy in rows
     ]
+
+
+# Shared by the owner-only detail endpoint and the public share endpoint -
+# both render the same report, just gated by a different auth check.
+def _simulation_to_result(simulation: Simulation) -> SimulationResult:
+    strategy = simulation.strategy
+    report = simulation.report_data or {}
+
+    return SimulationResult(
+        id=simulation.id,
+        stock_symbol=simulation.stock_symbol,
+        strategy_type=strategy.type if strategy else None,
+        strategy_name=strategy.name if strategy else None,
+        start_date=simulation.start_date,
+        end_date=simulation.end_date,
+        initial_capital=simulation.initial_capital,
+        final_capital=simulation.final_capital,
+        total_return_pct=simulation.total_return_pct,
+        return_before_costs_pct=report.get("return_before_costs_pct", 0.0),
+        sharpe=report.get("sharpe", 0.0),
+        regime_split=report.get("regime_split")
+        or RegimeSplit(bull_market_return_pct=0.0, bear_market_return_pct=0.0),
+        regime_periods=report.get("regime_periods", []),
+        trades=[
+            {
+                "trade_type": t.trade_type,
+                "trade_date": t.trade_date,
+                "price": t.price,
+                "quantity": t.quantity,
+                "reason": t.reason,
+            }
+            for t in simulation.trades
+        ],
+        # Older rows saved before report_data existed fall back to an empty
+        # chart - everything else (stats, trade log) still renders fine.
+        equity_curve=report.get("equity_curve", []),
+        buy_and_hold_equity_curve=report.get("buy_and_hold_equity_curve", []),
+        buy_and_hold_return_pct=report.get("buy_and_hold_return_pct"),
+        indicators=report.get("indicators", {}),
+        is_public=simulation.is_public,
+    )
 
 
 # Handles GET /api/simulations/{id} — re-fetches a previously saved simulation
@@ -259,29 +324,40 @@ def get_simulation(
     if simulation is None or simulation.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Simulation not found")
 
-    return SimulationResult(
-        id=simulation.id,
-        stock_symbol=simulation.stock_symbol,
-        start_date=simulation.start_date,
-        end_date=simulation.end_date,
-        initial_capital=simulation.initial_capital,
-        final_capital=simulation.final_capital,
-        total_return_pct=simulation.total_return_pct,
-        return_before_costs_pct=0.0,
-        sharpe=0.0,
-        regime_split=RegimeSplit(bull_market_return_pct=0.0, bear_market_return_pct=0.0),
-        regime_periods=[],
-        trades=[
-            {
-                "trade_type": t.trade_type,
-                "trade_date": t.trade_date,
-                "price": t.price,
-                "quantity": t.quantity,
-                "reason": t.reason,
-            }
-            for t in simulation.trades
-        ],
-        # The equity curve isn't persisted (it's derivable from price history +
-        # trades), so re-fetching a saved simulation returns trades only.
-        equity_curve=[],
-    )
+    return _simulation_to_result(simulation)
+
+
+# Handles PATCH /api/simulations/{id}/share — owner-only toggle for the
+# public/private flag. Backs the "Share" button: flipping is_public true
+# turns the permalink at /share/{id} (frontend) / GET /public/{id} (this
+# router) live; flipping it back false takes the link down again without
+# deleting anything.
+@router.patch("/{simulation_id}/share", response_model=SimulationResult)
+def set_simulation_visibility(
+    simulation_id: UUID,
+    payload: SimulationShareUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    simulation = db.get(Simulation, simulation_id)
+    if simulation is None or simulation.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Simulation not found")
+
+    simulation.is_public = payload.is_public
+    db.commit()
+    db.refresh(simulation)
+
+    return _simulation_to_result(simulation)
+
+
+# Handles GET /api/simulations/public/{id} — the permalink target. No auth:
+# anyone with the link can view a report, but only if its owner has flagged
+# it public (a 404, not a 403, for both "doesn't exist" and "not shared" -
+# doesn't confirm private simulation ids exist).
+@router.get("/public/{simulation_id}", response_model=SimulationResult)
+def get_public_simulation(simulation_id: UUID, db: Session = Depends(get_db)):
+    simulation = db.get(Simulation, simulation_id)
+    if simulation is None or not simulation.is_public:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    return _simulation_to_result(simulation)

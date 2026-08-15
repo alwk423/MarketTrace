@@ -83,6 +83,21 @@ export async function fetchSimulationDetail(id: string): Promise<SimulationResul
   return data;
 }
 
+// PATCH /api/simulations/:id/share -> owner-only, flips the public/private
+// flag that gates the permalink. Backs the Share button.
+export async function setSimulationVisibility(id: string, isPublic: boolean): Promise<SimulationResult> {
+  const { data } = await client.patch<SimulationResult>(`/simulations/${id}/share`, { is_public: isPublic });
+  return data;
+}
+
+// GET /api/simulations/public/:id -> the permalink target. No auth header is
+// required by the backend, but the request interceptor still attaches one if
+// the viewer happens to be logged in - harmless, the backend ignores it here.
+export async function fetchPublicSimulation(id: string): Promise<SimulationResult> {
+  const { data } = await client.get<SimulationResult>(`/simulations/public/${id}`);
+  return data;
+}
+
 // GET /api/strategies -> the list of strategies the backend knows how to run.
 // `async` means this returns a Promise; callers must `await` (or .then) it.
 export async function fetchStrategies(): Promise<StrategyCatalogEntry[]> {

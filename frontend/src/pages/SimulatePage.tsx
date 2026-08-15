@@ -4,6 +4,7 @@ import BacktestWindowFields from "../components/BacktestWindowFields";
 import MonteCarloPanel from "../components/MonteCarloPanel";
 import OptimizationHeatmap from "../components/OptimizationHeatmap";
 import ResultsPanel from "../components/ResultsPanel";
+import ShareButton from "../components/ShareButton";
 import StockPicker from "../components/StockPicker";
 import StrategyPicker from "../components/StrategyPicker";
 import TradeChart from "../components/TradeChart";
@@ -306,6 +307,9 @@ export default function SimulatePage() {
 
       {result && (
         <section className="results">
+          <div className="results-header">
+            <ShareButton key={result.id} simulationId={result.id} isPublic={result.is_public} />
+          </div>
           <TradeChart result={result} parameters={parameters} />
           <ResultsPanel result={result} />
         </section>

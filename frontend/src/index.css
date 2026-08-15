@@ -1218,3 +1218,53 @@ td.sell {
     padding: 0.5rem;
   }
 }
+
+.results-header {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.share-control {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.link-button:hover:not(:disabled) {
+  color: var(--text);
+  background: none;
+}
+
+/* Standalone permalink view (/share/:id) - deliberately outside .app-shell:
+   no sidebar/nav, since whoever opens the link may not have an account. */
+.share-page {
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.share-page-header {
+  padding: 1.25rem 2rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.share-page-header .brand {
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.share-page-body {
+  padding: 2rem;
+}
