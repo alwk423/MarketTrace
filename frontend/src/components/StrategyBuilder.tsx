@@ -169,8 +169,7 @@ export default function StrategyBuilder({ onSaved }: StrategyBuilderProps) {
   }
 
   return (
-    <details className="strategy-builder">
-      <summary>Build a custom strategy</summary>
+    <div className="strategy-builder">
       <div className="strategy-builder-body">
         <label className="strategy-builder-name">
           Name
@@ -205,6 +204,6 @@ export default function StrategyBuilder({ onSaved }: StrategyBuilderProps) {
           </button>
         </div>
       </div>
-    </details>
+    </div>
   );
 }

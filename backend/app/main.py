@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import simulations, stocks, strategies
+from app.api.routes import auth, simulations, stocks, strategies
 from app.core.config import settings
 
 # The actual server object — this is what `uvicorn app.main:app` runs and
@@ -25,6 +25,7 @@ app.add_middleware(
 # (e.g. simulations.py's router has prefix="/api/simulations"). Nothing in
 # those files is reachable until it's registered here — this is the step
 # that actually wires "POST /api/simulations" to create_simulation() etc.
+app.include_router(auth.router)
 app.include_router(stocks.router)
 app.include_router(strategies.router)
 app.include_router(simulations.router)

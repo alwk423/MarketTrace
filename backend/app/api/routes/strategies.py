@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models.custom_strategy import CustomStrategyDefinition
 from app.models.strategy import StrategyType
+from app.models.user import User
 from app.schemas.strategy import CustomStrategyCreate
 
 router = APIRouter(prefix="/api/strategies", tags=["strategies"])
@@ -55,16 +57,19 @@ def _custom_catalog_entry(row: CustomStrategyDefinition) -> dict:
 
 
 @router.get("")
-def list_strategies(db: Session = Depends(get_db)):
+def list_strategies(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     custom_rows = db.query(CustomStrategyDefinition).order_by(CustomStrategyDefinition.created_at).all()
     return [*STRATEGY_CATALOG, *(_custom_catalog_entry(row) for row in custom_rows)]
 
 
 # Handles POST /api/strategies/custom — saves a user-built rule set (from the
 # strategy builder panel) so it shows up in future GET /api/strategies calls
-# and can be selected/run just like a built-in strategy.
+# and can be selected/run just like a built-in strategy. Strategies are a
+# shared catalog (not scoped per-user) - only simulation runs are personal.
 @router.post("/custom")
-def create_custom_strategy(payload: CustomStrategyCreate, db: Session = Depends(get_db)):
+def create_custom_strategy(
+    payload: CustomStrategyCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+):
     row = CustomStrategyDefinition(name=payload.name, rules=payload.rules.model_dump())
     db.add(row)
     db.commit()

@@ -16,6 +16,13 @@ class Simulation(Base):
     strategy_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("strategies.id"), nullable=False
     )
+    # Nullable so pre-existing rows from before accounts existed aren't
+    # destroyed - they just never show up in anyone's history. Every row
+    # created after this phase always has one, since creating a simulation
+    # now requires being logged in.
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
+    )
     start_date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     end_date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     initial_capital: Mapped[float] = mapped_column(Float, nullable=False)
@@ -24,6 +31,7 @@ class Simulation(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     strategy = relationship("Strategy")
+    user = relationship("User")
     trades = relationship("Trade", back_populates="simulation", cascade="all, delete-orphan")
 
 

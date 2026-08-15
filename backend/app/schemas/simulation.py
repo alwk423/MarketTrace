@@ -75,6 +75,19 @@ class OptimizationResult(BaseModel):
     results: list[OptimizationResultPoint]
 
 
+class SimulationSummary(BaseModel):
+    id: UUID
+    stock_symbol: str
+    strategy_type: StrategyType
+    strategy_name: str
+    start_date: date
+    end_date: date
+    initial_capital: float
+    final_capital: float
+    total_return_pct: float
+    created_at: datetime
+
+
 class SimulationResult(BaseModel):
     id: UUID
     stock_symbol: str
