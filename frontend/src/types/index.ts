@@ -1,3 +1,15 @@
+export interface User {
+  id: string;
+  email: string;
+  created_at: string;
+}
+
+export interface AuthResponse {
+  access_token: string;
+  token_type: string;
+  user: User;
+}
+
 export type StrategyType = "sma_crossover" | "rsi" | "custom";
 
 export interface StrategyParameter {
@@ -215,6 +227,19 @@ export interface MonteCarloRequest {
   slippage_pct: number;
   position_size_pct: number;
   num_simulations: number;
+}
+
+export interface SimulationSummary {
+  id: string;
+  stock_symbol: string;
+  strategy_type: StrategyType;
+  strategy_name: string;
+  start_date: string;
+  end_date: string;
+  initial_capital: number;
+  final_capital: number;
+  total_return_pct: number;
+  created_at: string;
 }
 
 export interface MonteCarloResult {

@@ -28,7 +28,6 @@
 body {
   margin: 0;
   min-height: 100vh;
-  padding: 2rem;
   color: var(--text);
   background: var(--bg);
 }
@@ -39,7 +38,155 @@ select {
   font: inherit;
 }
 
-.simulator {
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Sticky so the nav + profile menu stay reachable while scrolling a long
+   results section - translucent + blur rather than a flat panel color so it
+   reads as floating above content instead of a hard seam. */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 0.85rem 2rem;
+  border-bottom: 1px solid var(--border);
+  background: rgba(18, 22, 31, 0.85);
+  backdrop-filter: blur(10px);
+}
+
+.app-header-left {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  min-width: 0;
+}
+
+.app-header .brand {
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.app-nav {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.app-nav a {
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.86rem;
+  text-decoration: none;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.app-nav a:hover {
+  color: var(--text);
+  background: var(--panel-sunken);
+}
+
+.app-nav a.active {
+  color: var(--text);
+  background: var(--panel-strong);
+}
+
+.profile-menu {
+  position: relative;
+  flex: none;
+}
+
+.profile-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.35rem 0.75rem 0.35rem 0.35rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--panel-sunken);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.82rem;
+  max-width: 14rem;
+}
+
+.profile-trigger:hover {
+  background: var(--panel-strong);
+}
+
+.profile-avatar {
+  flex: none;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.profile-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.5rem);
+  min-width: 220px;
+  padding: 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-strong);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  z-index: 20;
+}
+
+.profile-dropdown .profile-email {
+  padding: 0.5rem 0.6rem 0.6rem;
+  margin-bottom: 0.15rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.78rem;
+  color: var(--muted);
+  overflow-wrap: break-word;
+}
+
+.profile-dropdown button {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  color: var(--text);
+  border: none;
+  padding: 0.5rem 0.6rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.profile-dropdown button:hover {
+  background: var(--panel-sunken);
+}
+
+.page-container {
+  flex: 1;
+  padding: 2rem;
+}
+
+.page-shell {
   max-width: 1200px;
   margin: 0 auto;
   padding: 1.75rem;
@@ -49,11 +196,163 @@ select {
   box-shadow: var(--shadow);
 }
 
-.simulator h1 {
-  margin: 0 0 1.5rem;
-  font-size: 1.5rem;
+.page-shell h1 {
+  margin: 0 0 0.35rem;
+  font-size: 1.4rem;
   font-weight: 700;
   letter-spacing: -0.01em;
+}
+
+.page-subtitle {
+  margin: 0 0 1.5rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.save-confirmation {
+  margin: 0 0 1.25rem;
+  padding: 0.7rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-strong);
+  color: var(--green);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* Auth pages render outside the app shell (no header) - their own
+   full-viewport centered layout instead. */
+.auth-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  padding: 2rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.auth-brand {
+  font-weight: 800;
+  font-size: 1.2rem;
+  text-align: center;
+  letter-spacing: -0.01em;
+}
+
+.auth-subtitle {
+  margin: -0.6rem 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.auth-card label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.auth-card input {
+  min-height: 2.5rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--panel-sunken);
+  color: var(--text);
+  font: inherit;
+}
+
+.auth-switch {
+  margin: 0;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.auth-switch a {
+  color: var(--accent-bright);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.auth-switch a:hover {
+  text-decoration: underline;
+}
+
+.history-table-wrap {
+  overflow-x: auto;
+}
+
+.history-row {
+  cursor: pointer;
+}
+
+.history-row:hover td {
+  background: var(--panel-sunken);
+}
+
+.history-row.selected td {
+  background: var(--panel-sunken);
+  box-shadow: inset 2px 0 0 var(--accent-bright);
+}
+
+.history-empty {
+  padding: 2.5rem 1rem;
+  text-align: center;
+  color: var(--muted);
+  border: 1px dashed var(--border-strong);
+  border-radius: 12px;
+}
+
+.history-detail {
+  margin-top: 1.25rem;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel-strong);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.history-detail-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.75rem;
+}
+
+.history-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.history-stat-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.history-stat-value {
+  font-size: 1.1rem;
+  font-weight: 700;
 }
 
 .controls {
@@ -96,7 +395,7 @@ select {
   display: grid;
   grid-template-columns: minmax(260px, 1fr) minmax(320px, 1.5fr);
   gap: 1.25rem;
-  align-items: start;
+  align-items: stretch;
 }
 
 .controls-row {
@@ -172,13 +471,6 @@ select {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-}
-
-.strategy-builder > summary {
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 0.88rem;
-  color: var(--muted);
 }
 
 .strategy-builder-body {
@@ -338,6 +630,11 @@ button:disabled {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
+  /* Pins to the bottom of a stretched .control-card (e.g. the shorter
+     "Backtest window" card next to the taller "Strategy" card) instead of
+     leaving blank space below it once the two are equal height. A no-op
+     when the card's height already matches its content. */
+  margin-top: auto;
 }
 
 .error {
@@ -883,11 +1180,17 @@ td.sell {
 }
 
 @media (max-width: 900px) {
-  body {
+  .app-header {
+    padding: 0.75rem 1rem;
+    flex-wrap: wrap;
+    row-gap: 0.6rem;
+  }
+
+  .page-container {
     padding: 1rem;
   }
 
-  .simulator {
+  .page-shell {
     padding: 1rem;
   }
 

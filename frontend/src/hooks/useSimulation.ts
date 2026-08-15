@@ -33,10 +33,11 @@ function extractErrorMessage(err: unknown): string {
 }
 
 // A custom hook: a reusable bundle of state + logic a component can pull in
-// with one line (SimulatorPage.tsx calls useSimulation()). The only thing
-// that makes it "a hook" is the useXxx name + that it calls useState inside.
+// with one line (SimulatePage.tsx and PortfolioPage.tsx each call
+// useSimulation() independently). The only thing that makes it "a hook" is
+// the useXxx name + that it calls useState inside.
 export function useSimulation() {
-  // This hook's own state — separate from SimulatorPage's useState calls
+  // This hook's own state — separate from the page's useState calls
   // (symbol, startDate, etc.). Two different memory boxes.
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -54,7 +55,7 @@ export function useSimulation() {
   const [monteCarloLoading, setMonteCarloLoading] = useState(false);
   const [monteCarloError, setMonteCarloError] = useState<string | null>(null);
 
-  // Called by SimulatorPage's handleRun(). All the setX calls below happen
+  // Called by SimulatePage's handleRun(). All the setX calls below happen
   // HERE, in the frontend, in reaction to the backend's HTTP response — the
   // backend itself never calls setResult/setLoading/setError; it just sends
   // back JSON + a status code, and this function decides what that means.
@@ -127,7 +128,7 @@ export function useSimulation() {
     }
   }
 
-  // Handed back to whatever component calls useSimulation(); SimulatorPage.tsx
+  // Handed back to whatever component calls useSimulation(); SimulatePage.tsx
   // destructures this into { result, loading, error, run }.
   return {
     result,

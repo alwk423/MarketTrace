@@ -3,9 +3,11 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models.simulation import Simulation, Trade
 from app.models.strategy import Strategy as StrategyModel
+from app.models.user import User
 from app.schemas.portfolio import PortfolioSimulationRequest, PortfolioSimulationResult
 from app.schemas.robustness import (
     MonteCarloRequest,
@@ -19,6 +21,7 @@ from app.schemas.simulation import (
     RegimeSplit,
     SimulationRequest,
     SimulationResult,
+    SimulationSummary,
 )
 from app.services.backtester import (
     optimize_parameter_grid,
@@ -36,7 +39,11 @@ router = APIRouter(prefix="/api/simulations", tags=["simulations"])
 # into `payload` (validated against the SimulationRequest schema) before this
 # function ever runs, and Depends(get_db) hands it a live database session.
 @router.post("", response_model=SimulationResult)
-def create_simulation(payload: SimulationRequest, db: Session = Depends(get_db)):
+def create_simulation(
+    payload: SimulationRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     try:
         # The actual backtest: fetches historical prices and simulates trades
         # using the chosen strategy (see app/services/backtester.py).
@@ -68,6 +75,7 @@ def create_simulation(payload: SimulationRequest, db: Session = Depends(get_db))
     simulation = Simulation(
         stock_symbol=payload.stock_symbol.upper(),
         strategy_id=strategy_record.id,
+        user_id=current_user.id,
         start_date=payload.start_date,
         end_date=payload.end_date,
         initial_capital=payload.initial_capital,
@@ -110,7 +118,7 @@ def create_simulation(payload: SimulationRequest, db: Session = Depends(get_db))
 
 
 @router.post("/optimize", response_model=OptimizationResult)
-def optimize_simulation(payload: OptimizationRequest):
+def optimize_simulation(payload: OptimizationRequest, current_user: User = Depends(get_current_user)):
     try:
         results = optimize_parameter_grid(
             symbol=payload.stock_symbol,
@@ -136,7 +144,9 @@ def optimize_simulation(payload: OptimizationRequest):
 # split if weights is empty), and returns both a per-symbol comparison and a
 # combined portfolio-level equity curve. Not persisted, same as /optimize.
 @router.post("/portfolio", response_model=PortfolioSimulationResult)
-def create_portfolio_simulation(payload: PortfolioSimulationRequest):
+def create_portfolio_simulation(
+    payload: PortfolioSimulationRequest, current_user: User = Depends(get_current_user)
+):
     try:
         result = run_portfolio_backtest(
             symbols=payload.stock_symbols,
@@ -162,7 +172,7 @@ def create_portfolio_simulation(payload: PortfolioSimulationRequest):
 # of a split date, so a strategy's real robustness (not just an overall
 # number) is visible. Not persisted, same as /optimize and /portfolio.
 @router.post("/walk-forward", response_model=WalkForwardResult)
-def walk_forward_simulation(payload: WalkForwardRequest):
+def walk_forward_simulation(payload: WalkForwardRequest, current_user: User = Depends(get_current_user)):
     try:
         result = run_walk_forward_backtest(
             symbol=payload.stock_symbol,
@@ -190,7 +200,7 @@ def walk_forward_simulation(payload: WalkForwardRequest):
 # outcomes around the single observed backtest result, instead of just that
 # one number. Not persisted, same as /optimize and /portfolio.
 @router.post("/monte-carlo", response_model=MonteCarloResult)
-def monte_carlo_simulation(payload: MonteCarloRequest):
+def monte_carlo_simulation(payload: MonteCarloRequest, current_user: User = Depends(get_current_user)):
     try:
         result = run_monte_carlo_simulation(
             symbol=payload.stock_symbol,
@@ -210,13 +220,43 @@ def monte_carlo_simulation(payload: MonteCarloRequest):
     return MonteCarloResult(**result)
 
 
+# Handles GET /api/simulations — the current user's saved runs, newest first.
+# Backs the History page.
+@router.get("", response_model=list[SimulationSummary])
+def list_simulations(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    rows = (
+        db.query(Simulation, StrategyModel)
+        .join(StrategyModel, Simulation.strategy_id == StrategyModel.id)
+        .filter(Simulation.user_id == current_user.id)
+        .order_by(Simulation.created_at.desc())
+        .all()
+    )
+    return [
+        SimulationSummary(
+            id=simulation.id,
+            stock_symbol=simulation.stock_symbol,
+            strategy_type=strategy.type,
+            strategy_name=strategy.name,
+            start_date=simulation.start_date,
+            end_date=simulation.end_date,
+            initial_capital=simulation.initial_capital,
+            final_capital=simulation.final_capital,
+            total_return_pct=simulation.total_return_pct,
+            created_at=simulation.created_at,
+        )
+        for simulation, strategy in rows
+    ]
+
+
 # Handles GET /api/simulations/{id} — re-fetches a previously saved simulation
-# from Postgres by its id. Not currently called anywhere in the frontend, but
-# available for e.g. a "view past run" feature.
+# from Postgres by its id, scoped to whoever owns it. Backs the History page's
+# detail view.
 @router.get("/{simulation_id}", response_model=SimulationResult)
-def get_simulation(simulation_id: UUID, db: Session = Depends(get_db)):
+def get_simulation(
+    simulation_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+):
     simulation = db.get(Simulation, simulation_id)
-    if simulation is None:
+    if simulation is None or simulation.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Simulation not found")
 
     return SimulationResult(
