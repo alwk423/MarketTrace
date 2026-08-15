@@ -236,3 +236,179 @@ def test_run_portfolio_backtest_requires_at_least_one_symbol():
             end_date=pd.Timestamp("2024-01-02").date(),
             initial_capital=1000.0,
         )
+
+
+class HoldFromDayOneStrategy:
+    def generate_signals(self, prices):
+        signals = pd.Series(0, index=prices.index)
+        signals.iloc[0] = 1
+        return signals
+
+
+def test_run_walk_forward_backtest_splits_metrics_by_split_date(monkeypatch):
+    prices = pd.DataFrame(
+        {"close": [float(100 + i) for i in range(20)]},
+        index=pd.date_range("2024-01-01", periods=20),
+    )
+    monkeypatch.setattr(backtester, "get_price_history", lambda *args, **kwargs: prices)
+    monkeypatch.setattr(backtester, "build_strategy", lambda strategy_type, parameters: HoldFromDayOneStrategy())
+
+    result = backtester.run_walk_forward_backtest(
+        symbol="AAPL",
+        strategy_type=StrategyType.SMA_CROSSOVER,
+        parameters={"short_window": 5, "long_window": 10},
+        start_date=prices.index[0].date(),
+        end_date=prices.index[-1].date(),
+        initial_capital=100.0,
+        fee_pct=0.0,
+        slippage_pct=0.0,
+        position_size_pct=100.0,
+        train_ratio=0.5,
+    )
+
+    assert result["split_date"] == pd.Timestamp("2024-01-11").date()
+    assert result["train"]["end_date"] < result["split_date"]
+    assert result["test"]["start_date"] >= result["split_date"]
+    # The only trade (day-one buy) falls in the train window.
+    assert result["train"]["trade_count"] == 1
+    assert result["test"]["trade_count"] == 0
+    # Prices rise monotonically the whole way, so both slices should show gains.
+    assert result["train"]["total_return_pct"] > 0
+    assert result["test"]["total_return_pct"] > 0
+    assert len(result["equity_curve"]) == 20
+    assert result["optimized_parameters"] is None
+
+
+def test_run_walk_forward_backtest_rejects_invalid_train_ratio():
+    with pytest.raises(ValueError):
+        backtester.run_walk_forward_backtest(
+            symbol="AAPL",
+            strategy_type=StrategyType.SMA_CROSSOVER,
+            parameters={},
+            start_date=pd.Timestamp("2024-01-01").date(),
+            end_date=pd.Timestamp("2024-01-20").date(),
+            initial_capital=100.0,
+            train_ratio=1.5,
+        )
+
+
+def test_run_walk_forward_backtest_optimize_on_train_requires_sma_crossover():
+    with pytest.raises(ValueError):
+        backtester.run_walk_forward_backtest(
+            symbol="AAPL",
+            strategy_type=StrategyType.RSI,
+            parameters={},
+            start_date=pd.Timestamp("2024-01-01").date(),
+            end_date=pd.Timestamp("2024-01-20").date(),
+            initial_capital=100.0,
+            optimize_on_train=True,
+        )
+
+
+def test_run_walk_forward_backtest_optimize_on_train_uses_best_grid_result(monkeypatch):
+    prices = pd.DataFrame(
+        {"close": [float(100 + i) for i in range(20)]},
+        index=pd.date_range("2024-01-01", periods=20),
+    )
+    monkeypatch.setattr(backtester, "get_price_history", lambda *args, **kwargs: prices)
+
+    grid_results = [
+        {"parameters": {"short_window": 5, "long_window": 20}, "return_pct": 5.0, "sharpe": 0.5},
+        {"parameters": {"short_window": 10, "long_window": 30}, "return_pct": 20.0, "sharpe": 2.0},
+    ]
+    monkeypatch.setattr(backtester, "optimize_parameter_grid", lambda **kwargs: grid_results)
+
+    calls = []
+
+    def fake_run_backtest(**kwargs):
+        calls.append(kwargs["parameters"])
+        return {
+            "trades": [],
+            "equity_curve": [
+                {"date": prices.index[0], "price": 100.0, "equity": 100.0},
+                {"date": prices.index[-1], "price": 119.0, "equity": 110.0},
+            ],
+            "buy_and_hold_equity_curve": [],
+        }
+
+    monkeypatch.setattr(backtester, "run_backtest", fake_run_backtest)
+
+    result = backtester.run_walk_forward_backtest(
+        symbol="AAPL",
+        strategy_type=StrategyType.SMA_CROSSOVER,
+        parameters={"short_window": 1, "long_window": 2},
+        start_date=prices.index[0].date(),
+        end_date=prices.index[-1].date(),
+        initial_capital=100.0,
+        train_ratio=0.5,
+        optimize_on_train=True,
+    )
+
+    # Best grid entry (highest Sharpe) wins, not the highest raw return.
+    assert result["optimized_parameters"] == {"short_window": 10, "long_window": 30}
+    assert calls == [{"short_window": 10, "long_window": 30}]
+
+
+def test_run_monte_carlo_simulation_returns_distribution(monkeypatch):
+    prices = pd.DataFrame(
+        {"close": [100.0, 102.0, 101.0, 105.0, 103.0, 108.0, 107.0, 110.0]},
+        index=pd.date_range("2024-01-01", periods=8),
+    )
+    monkeypatch.setattr(backtester, "get_price_history", lambda *args, **kwargs: prices)
+    monkeypatch.setattr(backtester, "build_strategy", lambda strategy_type, parameters: HoldFromDayOneStrategy())
+
+    result = backtester.run_monte_carlo_simulation(
+        symbol="AAPL",
+        strategy_type=StrategyType.SMA_CROSSOVER,
+        parameters={},
+        start_date=prices.index[0].date(),
+        end_date=prices.index[-1].date(),
+        initial_capital=100.0,
+        fee_pct=0.0,
+        slippage_pct=0.0,
+        position_size_pct=100.0,
+        num_simulations=200,
+    )
+
+    assert len(result["simulated_returns_pct"]) == 200
+    assert 0.0 <= result["observed_percentile"] <= 100.0
+    assert set(result["percentiles"].keys()) == {"p5", "p25", "p50", "p75", "p95"}
+    assert result["observed_return_pct"] == pytest.approx(10.0)
+
+
+class NoTradeStrategy:
+    def generate_signals(self, prices):
+        return pd.Series(0, index=prices.index)
+
+
+def test_run_monte_carlo_simulation_handles_single_day_range(monkeypatch):
+    prices = pd.DataFrame({"close": [100.0]}, index=pd.date_range("2024-01-01", periods=1))
+    monkeypatch.setattr(backtester, "get_price_history", lambda *args, **kwargs: prices)
+    monkeypatch.setattr(backtester, "build_strategy", lambda strategy_type, parameters: NoTradeStrategy())
+
+    result = backtester.run_monte_carlo_simulation(
+        symbol="AAPL",
+        strategy_type=StrategyType.SMA_CROSSOVER,
+        parameters={},
+        start_date=prices.index[0].date(),
+        end_date=prices.index[0].date(),
+        initial_capital=100.0,
+        num_simulations=50,
+    )
+
+    assert result["simulated_returns_pct"] == []
+    assert result["observed_percentile"] == 50.0
+    assert result["mean_return_pct"] == 0.0
+
+
+def test_run_monte_carlo_simulation_rejects_non_positive_simulation_count():
+    with pytest.raises(ValueError):
+        backtester.run_monte_carlo_simulation(
+            symbol="AAPL",
+            strategy_type=StrategyType.SMA_CROSSOVER,
+            parameters={},
+            start_date=pd.Timestamp("2024-01-01").date(),
+            end_date=pd.Timestamp("2024-01-02").date(),
+            initial_capital=100.0,
+            num_simulations=0,
+        )

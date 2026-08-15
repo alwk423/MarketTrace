@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { fetchStrategies } from "../api/client";
 import ResultsPanel from "../components/ResultsPanel";
+import MonteCarloPanel from "../components/MonteCarloPanel";
 import OptimizationHeatmap from "../components/OptimizationHeatmap";
 import PortfolioEquityChart from "../components/PortfolioEquityChart";
 import PortfolioResultsPanel from "../components/PortfolioResultsPanel";
@@ -9,6 +10,8 @@ import StockPicker from "../components/StockPicker";
 import StrategyBuilder from "../components/StrategyBuilder";
 import StrategyPicker from "../components/StrategyPicker";
 import TradeChart from "../components/TradeChart";
+import WalkForwardChart from "../components/WalkForwardChart";
+import WalkForwardPanel from "../components/WalkForwardPanel";
 import { useSimulation } from "../hooks/useSimulation";
 import type { CustomStrategyRules, StrategyCatalogEntry } from "../types";
 
@@ -65,6 +68,10 @@ export default function SimulatorPage() {
   const [feePct, setFeePct] = useState(0.1);
   const [slippagePct, setSlippagePct] = useState(0.05);
   const [positionSizePct, setPositionSizePct] = useState(100);
+  // Robustness testing controls (walk-forward + Monte Carlo) - single-symbol only.
+  const [trainRatio, setTrainRatio] = useState(0.7);
+  const [optimizeOnTrain, setOptimizeOnTrain] = useState(false);
+  const [numSimulations, setNumSimulations] = useState(500);
 
   // Backend-call state (the last result, whether a request is in flight, any
   // error, and the function to trigger a new call) lives in this hook instead
@@ -82,6 +89,14 @@ export default function SimulatorPage() {
     portfolioLoading,
     portfolioError,
     runPortfolio,
+    walkForwardResult,
+    walkForwardLoading,
+    walkForwardError,
+    runWalkForwardTest,
+    monteCarloResult,
+    monteCarloLoading,
+    monteCarloError,
+    runMonteCarloTest,
   } = useSimulation();
 
   // useEffect(fn, []) runs `fn` exactly once, right after first render.
@@ -218,6 +233,46 @@ export default function SimulatorPage() {
       fee_pct: feePct,
       slippage_pct: slippagePct,
       position_size_pct: positionSizePct,
+    });
+  }
+
+  // Robustness testing runs against a single symbol only (same restriction
+  // as parameter optimization) - portfolio mode disables both buttons below.
+  function handleWalkForward() {
+    if (!selectedStrategy || portfolioMode) return;
+
+    const { shortWindows, longWindows } = buildOptimizationGrid(parameters);
+    runWalkForwardTest({
+      stock_symbol: symbol,
+      strategy_type: selectedStrategy.type,
+      strategy_parameters: currentStrategyParameters(),
+      start_date: startDate,
+      end_date: endDate,
+      initial_capital: initialCapital,
+      fee_pct: feePct,
+      slippage_pct: slippagePct,
+      position_size_pct: positionSizePct,
+      train_ratio: trainRatio,
+      optimize_on_train: optimizeOnTrain && selectedStrategy.type === "sma_crossover",
+      short_windows: shortWindows,
+      long_windows: longWindows,
+    });
+  }
+
+  function handleMonteCarlo() {
+    if (!selectedStrategy || portfolioMode) return;
+
+    runMonteCarloTest({
+      stock_symbol: symbol,
+      strategy_type: selectedStrategy.type,
+      strategy_parameters: currentStrategyParameters(),
+      start_date: startDate,
+      end_date: endDate,
+      initial_capital: initialCapital,
+      fee_pct: feePct,
+      slippage_pct: slippagePct,
+      position_size_pct: positionSizePct,
+      num_simulations: numSimulations,
     });
   }
 
@@ -367,6 +422,69 @@ export default function SimulatorPage() {
             </details>
           </div>
         </div>
+
+        <div className="control-card">
+          <span className="control-card-title">Robustness testing</span>
+          <div className="controls-row">
+            <label>
+              Train ratio
+              <input
+                type="number"
+                step="0.05"
+                min="0.1"
+                max="0.9"
+                value={trainRatio}
+                onChange={(e) => setTrainRatio(Number(e.target.value))}
+              />
+            </label>
+            <label
+              className="mode-toggle"
+              title={
+                selectedStrategy?.type !== "sma_crossover"
+                  ? "Only available for the SMA crossover strategy"
+                  : undefined
+              }
+            >
+              <input
+                type="checkbox"
+                checked={optimizeOnTrain}
+                disabled={selectedStrategy?.type !== "sma_crossover"}
+                onChange={(e) => setOptimizeOnTrain(e.target.checked)}
+              />
+              Optimize on train window
+            </label>
+            <label>
+              Monte Carlo runs
+              <input
+                type="number"
+                step="50"
+                min="50"
+                max="2000"
+                value={numSimulations}
+                onChange={(e) => setNumSimulations(Number(e.target.value))}
+              />
+            </label>
+          </div>
+
+          <div className="action-row">
+            <button
+              onClick={handleWalkForward}
+              disabled={walkForwardLoading || !selectedStrategy || portfolioMode}
+              className="secondary-button"
+              title={portfolioMode ? "Robustness testing runs against a single symbol" : undefined}
+            >
+              {walkForwardLoading ? "Running walk-forward..." : "Run walk-forward test"}
+            </button>
+            <button
+              onClick={handleMonteCarlo}
+              disabled={monteCarloLoading || !selectedStrategy || portfolioMode}
+              className="secondary-button"
+              title={portfolioMode ? "Robustness testing runs against a single symbol" : undefined}
+            >
+              {monteCarloLoading ? "Running Monte Carlo..." : "Run Monte Carlo simulation"}
+            </button>
+          </div>
+        </div>
       </section>
 
       {/* Its own full-width panel rather than a flex item alongside the form
@@ -380,6 +498,8 @@ export default function SimulatorPage() {
       {error && <p className="error">{error}</p>}
       {optimizationError && <p className="error">{optimizationError}</p>}
       {portfolioError && <p className="error">{portfolioError}</p>}
+      {walkForwardError && <p className="error">{walkForwardError}</p>}
+      {monteCarloError && <p className="error">{monteCarloError}</p>}
 
       {optimization && selectedStrategy?.type === "sma_crossover" && !portfolioMode && (
         <OptimizationHeatmap
@@ -407,6 +527,19 @@ export default function SimulatorPage() {
         <section className="results">
           <TradeChart result={result} parameters={parameters} />
           <ResultsPanel result={result} />
+        </section>
+      )}
+
+      {!portfolioMode && walkForwardResult && (
+        <section className="results">
+          <WalkForwardChart result={walkForwardResult} />
+          <WalkForwardPanel result={walkForwardResult} />
+        </section>
+      )}
+
+      {!portfolioMode && monteCarloResult && (
+        <section className="results">
+          <MonteCarloPanel result={monteCarloResult} />
         </section>
       )}
     </main>

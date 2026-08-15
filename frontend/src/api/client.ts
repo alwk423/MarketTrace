@@ -1,6 +1,8 @@
 import axios from "axios";
 import type {
   CustomStrategyCreateRequest,
+  MonteCarloRequest,
+  MonteCarloResult,
   OptimizationRequest,
   OptimizationResult,
   PortfolioSimulationRequest,
@@ -8,6 +10,8 @@ import type {
   SimulationRequest,
   SimulationResult,
   StrategyCatalogEntry,
+  WalkForwardRequest,
+  WalkForwardResult,
 } from "../types";
 
 // Preconfigured HTTP client: every request sent through `client` gets this
@@ -43,6 +47,22 @@ export async function runPortfolioSimulation(
   payload: PortfolioSimulationRequest,
 ): Promise<PortfolioSimulationResult> {
   const { data } = await client.post<PortfolioSimulationResult>("/simulations/portfolio", payload);
+  return data;
+}
+
+// POST /api/simulations/walk-forward -> runs one continuous backtest, then
+// reports performance split into an in-sample "train" slice and an
+// out-of-sample "test" slice on either side of a split date.
+export async function runWalkForward(payload: WalkForwardRequest): Promise<WalkForwardResult> {
+  const { data } = await client.post<WalkForwardResult>("/simulations/walk-forward", payload);
+  return data;
+}
+
+// POST /api/simulations/monte-carlo -> bootstraps the strategy's own daily
+// returns hundreds of times and returns the distribution of possible
+// outcomes around the single observed result.
+export async function runMonteCarlo(payload: MonteCarloRequest): Promise<MonteCarloResult> {
+  const { data } = await client.post<MonteCarloResult>("/simulations/monte-carlo", payload);
   return data;
 }
 

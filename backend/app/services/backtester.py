@@ -1,6 +1,7 @@
-from datetime import date
+from datetime import date, timedelta
 import math
 
+import numpy as np
 import pandas as pd
 from pandas import isna
 
@@ -402,11 +403,12 @@ def optimize_parameter_grid(
     position_size_pct: float = 100.0,
     short_windows: list[int] | None = None,
     long_windows: list[int] | None = None,
+    price_history: pd.DataFrame | None = None,
 ) -> list[dict]:
     if strategy_type != StrategyType.SMA_CROSSOVER:
         raise ValueError("Parameter optimization is only available for the SMA crossover strategy")
 
-    prices = get_price_history(symbol, start_date, end_date)
+    prices = price_history if price_history is not None else get_price_history(symbol, start_date, end_date)
     short_windows = short_windows or [5, 10, 15, 20, 25, 30]
     long_windows = long_windows or [20, 30, 40, 50, 60, 80]
 
@@ -443,3 +445,203 @@ def optimize_parameter_grid(
             )
 
     return results
+
+
+def _split_equity_curve(equity_curve: list[dict], split_timestamp: pd.Timestamp) -> tuple[list[dict], list[dict]]:
+    # Everything before the split is "train" (in-sample), everything from the
+    # split date onward is "test" (out-of-sample) - one continuous run, just
+    # sliced by date for reporting.
+    train = [point for point in equity_curve if pd.Timestamp(point["date"]) < split_timestamp]
+    test = [point for point in equity_curve if pd.Timestamp(point["date"]) >= split_timestamp]
+    return train, test
+
+
+def _summarize_window(points: list[dict], window_trades: list[dict]) -> dict:
+    if not points:
+        return {
+            "start_date": None,
+            "end_date": None,
+            "total_return_pct": 0.0,
+            "sharpe": 0.0,
+            "final_capital": 0.0,
+            "trade_count": len(window_trades),
+        }
+
+    first_equity = points[0]["equity"]
+    last_equity = points[-1]["equity"]
+    total_return_pct = (last_equity / first_equity - 1) * 100 if first_equity else 0.0
+
+    return {
+        "start_date": pd.Timestamp(points[0]["date"]).date(),
+        "end_date": pd.Timestamp(points[-1]["date"]).date(),
+        "total_return_pct": total_return_pct,
+        "sharpe": _calculate_sharpe_ratio(points),
+        "final_capital": last_equity,
+        "trade_count": len(window_trades),
+    }
+
+
+def run_walk_forward_backtest(
+    symbol: str,
+    strategy_type: StrategyType,
+    parameters: dict,
+    start_date: date,
+    end_date: date,
+    initial_capital: float,
+    fee_pct: float = 0.1,
+    slippage_pct: float = 0.05,
+    position_size_pct: float = 100.0,
+    train_ratio: float = 0.7,
+    optimize_on_train: bool = False,
+    short_windows: list[int] | None = None,
+    long_windows: list[int] | None = None,
+) -> dict:
+    """Run one continuous backtest over [start_date, end_date], then report
+    performance separately for the "train" (in-sample) slice before the split
+    and the "test" (out-of-sample) slice after it - answering "did this still
+    work on data the strategy/parameters weren't tuned against?"
+
+    If optimize_on_train is set (SMA crossover only), the short/long window
+    grid is searched against just the train slice, and the winning pair (by
+    Sharpe, then return) is what actually runs across the full period -
+    mirroring how a trader would pick parameters using only data available
+    up to the split, then find out how they held up afterward.
+    """
+    if not (0 < train_ratio < 1):
+        raise ValueError("train_ratio must be between 0 and 1")
+    if optimize_on_train and strategy_type != StrategyType.SMA_CROSSOVER:
+        raise ValueError("Walk-forward parameter optimization is only available for the SMA crossover strategy")
+
+    total_days = (end_date - start_date).days
+    split_date = start_date + timedelta(days=round(total_days * train_ratio))
+    if split_date <= start_date or split_date >= end_date:
+        raise ValueError("train_ratio leaves an empty train or test window")
+
+    prices = get_price_history(symbol, start_date, end_date)
+
+    final_parameters = dict(parameters)
+    optimized_parameters: dict | None = None
+    if optimize_on_train:
+        train_prices = prices.loc[pd.Timestamp(start_date):pd.Timestamp(split_date)]
+        grid_results = optimize_parameter_grid(
+            symbol=symbol,
+            strategy_type=strategy_type,
+            strategy_parameters=parameters,
+            start_date=start_date,
+            end_date=split_date,
+            initial_capital=initial_capital,
+            fee_pct=fee_pct,
+            slippage_pct=slippage_pct,
+            position_size_pct=position_size_pct,
+            short_windows=short_windows,
+            long_windows=long_windows,
+            price_history=train_prices,
+        )
+        if grid_results:
+            best = max(grid_results, key=lambda r: (r["sharpe"], r["return_pct"]))
+            optimized_parameters = best["parameters"]
+            final_parameters = {**parameters, **optimized_parameters}
+
+    result = run_backtest(
+        symbol=symbol,
+        strategy_type=strategy_type,
+        parameters=final_parameters,
+        start_date=start_date,
+        end_date=end_date,
+        initial_capital=initial_capital,
+        fee_pct=fee_pct,
+        slippage_pct=slippage_pct,
+        position_size_pct=position_size_pct,
+        price_history=prices,
+    )
+
+    split_ts = pd.Timestamp(split_date)
+    train_points, test_points = _split_equity_curve(result["equity_curve"], split_ts)
+    train_trades = [trade for trade in result["trades"] if pd.Timestamp(trade["trade_date"]) < split_ts]
+    test_trades = [trade for trade in result["trades"] if pd.Timestamp(trade["trade_date"]) >= split_ts]
+
+    train_summary = _summarize_window(train_points, train_trades)
+    test_summary = _summarize_window(test_points, test_trades)
+    if train_summary["start_date"] is None or test_summary["start_date"] is None:
+        raise ValueError("train_ratio leaves an empty train or test window - widen the backtest date range")
+
+    return {
+        "split_date": split_date,
+        "optimized_parameters": optimized_parameters,
+        "train": train_summary,
+        "test": test_summary,
+        "equity_curve": result["equity_curve"],
+        "buy_and_hold_equity_curve": result["buy_and_hold_equity_curve"],
+    }
+
+
+def run_monte_carlo_simulation(
+    symbol: str,
+    strategy_type: StrategyType,
+    parameters: dict,
+    start_date: date,
+    end_date: date,
+    initial_capital: float,
+    fee_pct: float = 0.1,
+    slippage_pct: float = 0.05,
+    position_size_pct: float = 100.0,
+    num_simulations: int = 500,
+) -> dict:
+    """Bootstrap the strategy's own daily returns to see how much the single
+    observed result could plausibly have varied by chance. Each simulation
+    resamples len(daily_returns) days with replacement (so the same day can
+    be drawn more than once, or not at all) and compounds them into one
+    possible final return - repeated num_simulations times to build a
+    distribution, against which the real observed return is ranked."""
+    if num_simulations < 1:
+        raise ValueError("num_simulations must be at least 1")
+
+    result = run_backtest(
+        symbol=symbol,
+        strategy_type=strategy_type,
+        parameters=parameters,
+        start_date=start_date,
+        end_date=end_date,
+        initial_capital=initial_capital,
+        fee_pct=fee_pct,
+        slippage_pct=slippage_pct,
+        position_size_pct=position_size_pct,
+    )
+    observed_return_pct = result["total_return_pct"]
+
+    daily_returns = _equity_series(result["equity_curve"]).pct_change().dropna().to_numpy()
+
+    if daily_returns.size == 0:
+        flat_percentiles = {"p5": 0.0, "p25": 0.0, "p50": 0.0, "p75": 0.0, "p95": 0.0}
+        return {
+            "observed_return_pct": observed_return_pct,
+            "observed_percentile": 50.0,
+            "mean_return_pct": 0.0,
+            "median_return_pct": 0.0,
+            "std_dev_pct": 0.0,
+            "percentiles": flat_percentiles,
+            "simulated_returns_pct": [],
+        }
+
+    rng = np.random.default_rng()
+    n_days = daily_returns.size
+    samples = rng.choice(daily_returns, size=(num_simulations, n_days), replace=True)
+    # Multiply each simulated path's daily growth factors together (not the
+    # raw % returns) to compound correctly, same as _calculate_regime_returns.
+    simulated_returns_pct = ((1 + samples).prod(axis=1) - 1) * 100
+
+    observed_percentile = float((simulated_returns_pct <= observed_return_pct).mean() * 100)
+    percentiles = {
+        label: float(np.percentile(simulated_returns_pct, pct))
+        for label, pct in (("p5", 5), ("p25", 25), ("p50", 50), ("p75", 75), ("p95", 95))
+    }
+
+    return {
+        "observed_return_pct": observed_return_pct,
+        "observed_percentile": observed_percentile,
+        "mean_return_pct": float(simulated_returns_pct.mean()),
+        "median_return_pct": float(np.median(simulated_returns_pct)),
+        "std_dev_pct": float(simulated_returns_pct.std(ddof=0)),
+        "percentiles": percentiles,
+        "simulated_returns_pct": simulated_returns_pct.tolist(),
+    }
