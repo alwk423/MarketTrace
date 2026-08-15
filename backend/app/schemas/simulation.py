@@ -86,11 +86,14 @@ class SimulationSummary(BaseModel):
     final_capital: float
     total_return_pct: float
     created_at: datetime
+    is_public: bool = False
 
 
 class SimulationResult(BaseModel):
     id: UUID
     stock_symbol: str
+    strategy_type: StrategyType | None = None
+    strategy_name: str | None = None
     start_date: date
     end_date: date
     initial_capital: float
@@ -105,3 +108,8 @@ class SimulationResult(BaseModel):
     buy_and_hold_equity_curve: list[EquityPoint] = []
     buy_and_hold_return_pct: float | None = None
     indicators: dict[str, list[IndicatorPoint]] = {}
+    is_public: bool = False
+
+
+class SimulationShareUpdate(BaseModel):
+    is_public: bool

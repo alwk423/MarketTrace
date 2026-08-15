@@ -1,6 +1,7 @@
 import { isAxiosError } from "axios";
 import { useEffect, useState } from "react";
 import { fetchSimulationDetail, fetchSimulationHistory } from "../api/client";
+import ShareButton from "../components/ShareButton";
 import type { SimulationResult, SimulationSummary } from "../types";
 
 const STRATEGY_LABELS: Record<string, string> = {
@@ -28,6 +29,13 @@ export default function HistoryPage() {
         setError(isAxiosError<{ detail?: string }>(err) ? err.response?.data?.detail ?? err.message : "Could not load history");
       });
   }, []);
+
+  // Keeps the table's "Shared" badge in sync when the flag is flipped from
+  // the detail panel below - without this the row would still show its
+  // pre-toggle state until the page is reloaded.
+  function handleVisibilityChange(id: string, isPublic: boolean) {
+    setRuns((current) => current?.map((run) => (run.id === id ? { ...run, is_public: isPublic } : run)) ?? current);
+  }
 
   function handleSelect(id: string) {
     setSelectedId(id);
@@ -67,6 +75,7 @@ export default function HistoryPage() {
                 <th>Window</th>
                 <th>Return</th>
                 <th>Run date</th>
+                <th>Shared</th>
               </tr>
             </thead>
             <tbody>
@@ -85,6 +94,7 @@ export default function HistoryPage() {
                     {run.total_return_pct.toFixed(2)}%
                   </td>
                   <td>{formatDate(run.created_at)}</td>
+                  <td>{run.is_public && <span className="panel-chip">Public</span>}</td>
                 </tr>
               ))}
             </tbody>
@@ -99,6 +109,15 @@ export default function HistoryPage() {
 
           {detail && (
             <>
+              <div className="results-header">
+                <ShareButton
+                  key={detail.id}
+                  simulationId={detail.id}
+                  isPublic={detail.is_public}
+                  onVisibilityChange={(isPublic) => handleVisibilityChange(detail.id, isPublic)}
+                />
+              </div>
+
               <div className="history-detail-stats">
                 <div className="history-stat">
                   <span className="history-stat-label">Initial capital</span>

@@ -1,8 +1,8 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, String
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -29,6 +29,13 @@ class Simulation(Base):
     final_capital: Mapped[float] = mapped_column(Float, nullable=False)
     total_return_pct: Mapped[float] = mapped_column(Float, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    # Flips true when the owner shares this run - gates the public,
+    # unauthenticated read endpoint used by the shared report view.
+    is_public: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
+    # Snapshot of equity_curve/indicators/regime data computed at run time -
+    # see the migration that added this column for why it's needed to render
+    # a report (public or private) without re-running the backtest.
+    report_data: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     strategy = relationship("Strategy")
     user = relationship("User")

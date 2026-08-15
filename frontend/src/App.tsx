@@ -6,6 +6,7 @@ import BuildStrategyPage from "./pages/BuildStrategyPage";
 import HistoryPage from "./pages/HistoryPage";
 import LoginPage from "./pages/LoginPage";
 import PortfolioPage from "./pages/PortfolioPage";
+import SharedReportPage from "./pages/SharedReportPage";
 import SignupPage from "./pages/SignupPage";
 import SimulatePage from "./pages/SimulatePage";
 
@@ -16,6 +17,7 @@ function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
+          <Route path="/share/:id" element={<SharedReportPage />} />
 
           <Route element={<ProtectedRoute />}>
             <Route element={<AppLayout />}>
