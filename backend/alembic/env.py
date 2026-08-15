@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.core.config import settings
 from app.core.database import Base
-from app.models import CustomStrategyDefinition, Simulation, Strategy, Trade  # noqa: F401  registers tables on Base
+from app.models import CustomStrategyDefinition, Simulation, Strategy, Trade, User  # noqa: F401  registers tables on Base
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url)
