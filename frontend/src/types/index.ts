@@ -169,3 +169,60 @@ export interface PortfolioSimulationRequest {
   slippage_pct: number;
   position_size_pct: number;
 }
+
+export interface WalkForwardRequest {
+  stock_symbol: string;
+  strategy_type: StrategyType;
+  strategy_parameters: Record<string, unknown>;
+  start_date: string;
+  end_date: string;
+  initial_capital: number;
+  fee_pct: number;
+  slippage_pct: number;
+  position_size_pct: number;
+  train_ratio: number;
+  optimize_on_train: boolean;
+  short_windows: number[];
+  long_windows: number[];
+}
+
+export interface WalkForwardWindowResult {
+  start_date: string;
+  end_date: string;
+  total_return_pct: number;
+  sharpe: number;
+  final_capital: number;
+  trade_count: number;
+}
+
+export interface WalkForwardResult {
+  split_date: string;
+  optimized_parameters: Record<string, number> | null;
+  train: WalkForwardWindowResult;
+  test: WalkForwardWindowResult;
+  equity_curve: EquityPoint[];
+  buy_and_hold_equity_curve: EquityPoint[];
+}
+
+export interface MonteCarloRequest {
+  stock_symbol: string;
+  strategy_type: StrategyType;
+  strategy_parameters: Record<string, unknown>;
+  start_date: string;
+  end_date: string;
+  initial_capital: number;
+  fee_pct: number;
+  slippage_pct: number;
+  position_size_pct: number;
+  num_simulations: number;
+}
+
+export interface MonteCarloResult {
+  observed_return_pct: number;
+  observed_percentile: number;
+  mean_return_pct: number;
+  median_return_pct: number;
+  std_dev_pct: number;
+  percentiles: Record<"p5" | "p25" | "p50" | "p75" | "p95", number>;
+  simulated_returns_pct: number[];
+}

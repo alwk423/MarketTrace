@@ -1,13 +1,23 @@
 import { isAxiosError } from "axios";
 import { useState } from "react";
-import { optimizeSimulation, runPortfolioSimulation, runSimulation } from "../api/client";
+import {
+  optimizeSimulation,
+  runMonteCarlo,
+  runPortfolioSimulation,
+  runSimulation,
+  runWalkForward,
+} from "../api/client";
 import type {
+  MonteCarloRequest,
+  MonteCarloResult,
   OptimizationRequest,
   OptimizationResult,
   PortfolioSimulationRequest,
   PortfolioSimulationResult,
   SimulationRequest,
   SimulationResult,
+  WalkForwardRequest,
+  WalkForwardResult,
 } from "../types";
 
 // Turns whatever got thrown/caught into one displayable string. Not a hook,
@@ -37,6 +47,12 @@ export function useSimulation() {
   const [portfolioResult, setPortfolioResult] = useState<PortfolioSimulationResult | null>(null);
   const [portfolioLoading, setPortfolioLoading] = useState(false);
   const [portfolioError, setPortfolioError] = useState<string | null>(null);
+  const [walkForwardResult, setWalkForwardResult] = useState<WalkForwardResult | null>(null);
+  const [walkForwardLoading, setWalkForwardLoading] = useState(false);
+  const [walkForwardError, setWalkForwardError] = useState<string | null>(null);
+  const [monteCarloResult, setMonteCarloResult] = useState<MonteCarloResult | null>(null);
+  const [monteCarloLoading, setMonteCarloLoading] = useState(false);
+  const [monteCarloError, setMonteCarloError] = useState<string | null>(null);
 
   // Called by SimulatorPage's handleRun(). All the setX calls below happen
   // HERE, in the frontend, in reaction to the backend's HTTP response — the
@@ -85,6 +101,32 @@ export function useSimulation() {
     }
   }
 
+  async function runWalkForwardTest(payload: WalkForwardRequest) {
+    setWalkForwardLoading(true);
+    setWalkForwardError(null);
+    try {
+      const data = await runWalkForward(payload);
+      setWalkForwardResult(data);
+    } catch (err) {
+      setWalkForwardError(extractErrorMessage(err));
+    } finally {
+      setWalkForwardLoading(false);
+    }
+  }
+
+  async function runMonteCarloTest(payload: MonteCarloRequest) {
+    setMonteCarloLoading(true);
+    setMonteCarloError(null);
+    try {
+      const data = await runMonteCarlo(payload);
+      setMonteCarloResult(data);
+    } catch (err) {
+      setMonteCarloError(extractErrorMessage(err));
+    } finally {
+      setMonteCarloLoading(false);
+    }
+  }
+
   // Handed back to whatever component calls useSimulation(); SimulatorPage.tsx
   // destructures this into { result, loading, error, run }.
   return {
@@ -100,5 +142,13 @@ export function useSimulation() {
     portfolioLoading,
     portfolioError,
     runPortfolio,
+    walkForwardResult,
+    walkForwardLoading,
+    walkForwardError,
+    runWalkForwardTest,
+    monteCarloResult,
+    monteCarloLoading,
+    monteCarloError,
+    runMonteCarloTest,
   };
 }

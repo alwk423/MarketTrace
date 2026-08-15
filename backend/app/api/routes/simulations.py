@@ -7,6 +7,12 @@ from app.core.database import get_db
 from app.models.simulation import Simulation, Trade
 from app.models.strategy import Strategy as StrategyModel
 from app.schemas.portfolio import PortfolioSimulationRequest, PortfolioSimulationResult
+from app.schemas.robustness import (
+    MonteCarloRequest,
+    MonteCarloResult,
+    WalkForwardRequest,
+    WalkForwardResult,
+)
 from app.schemas.simulation import (
     OptimizationRequest,
     OptimizationResult,
@@ -14,7 +20,13 @@ from app.schemas.simulation import (
     SimulationRequest,
     SimulationResult,
 )
-from app.services.backtester import optimize_parameter_grid, run_backtest, run_portfolio_backtest
+from app.services.backtester import (
+    optimize_parameter_grid,
+    run_backtest,
+    run_monte_carlo_simulation,
+    run_portfolio_backtest,
+    run_walk_forward_backtest,
+)
 
 router = APIRouter(prefix="/api/simulations", tags=["simulations"])
 
@@ -142,6 +154,60 @@ def create_portfolio_simulation(payload: PortfolioSimulationRequest):
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     return PortfolioSimulationResult(**result)
+
+
+# Handles POST /api/simulations/walk-forward — runs one continuous backtest
+# over the requested date range, then reports performance separately for the
+# in-sample "train" slice and the out-of-sample "test" slice on either side
+# of a split date, so a strategy's real robustness (not just an overall
+# number) is visible. Not persisted, same as /optimize and /portfolio.
+@router.post("/walk-forward", response_model=WalkForwardResult)
+def walk_forward_simulation(payload: WalkForwardRequest):
+    try:
+        result = run_walk_forward_backtest(
+            symbol=payload.stock_symbol,
+            strategy_type=payload.strategy_type,
+            parameters=payload.strategy_parameters,
+            start_date=payload.start_date,
+            end_date=payload.end_date,
+            initial_capital=payload.initial_capital,
+            fee_pct=payload.fee_pct,
+            slippage_pct=payload.slippage_pct,
+            position_size_pct=payload.position_size_pct,
+            train_ratio=payload.train_ratio,
+            optimize_on_train=payload.optimize_on_train,
+            short_windows=payload.short_windows,
+            long_windows=payload.long_windows,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return WalkForwardResult(**result)
+
+
+# Handles POST /api/simulations/monte-carlo — bootstraps the strategy's own
+# daily returns hundreds of times to show the distribution of plausible
+# outcomes around the single observed backtest result, instead of just that
+# one number. Not persisted, same as /optimize and /portfolio.
+@router.post("/monte-carlo", response_model=MonteCarloResult)
+def monte_carlo_simulation(payload: MonteCarloRequest):
+    try:
+        result = run_monte_carlo_simulation(
+            symbol=payload.stock_symbol,
+            strategy_type=payload.strategy_type,
+            parameters=payload.strategy_parameters,
+            start_date=payload.start_date,
+            end_date=payload.end_date,
+            initial_capital=payload.initial_capital,
+            fee_pct=payload.fee_pct,
+            slippage_pct=payload.slippage_pct,
+            position_size_pct=payload.position_size_pct,
+            num_simulations=payload.num_simulations,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return MonteCarloResult(**result)
 
 
 # Handles GET /api/simulations/{id} — re-fetches a previously saved simulation
